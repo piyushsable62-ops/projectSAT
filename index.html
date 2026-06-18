@@ -1913,156 +1913,777 @@ function PYQModule() {
 }
 
 // ---------- STUDY MATERIAL ----------
-function StudyMaterial() {
+const SUBJECT_VIDEOS = {
+  math: [
+    { title: "Laplace Transform Basics", src: "https://www.youtube.com/embed/videoseries?list=PLDesaqWTN6ESPaHy2QUKHCYZ_fMC0j793" },
+    { title: "Matrix Diagonalization Course", src: "https://www.youtube.com/embed/videoseries?list=PLBlnK6fEyqRiw-gRMC8yKyhyYQD3156L8" }
+  ],
+  phy: [
+    { title: "Wave Optics Lectures", src: "https://www.youtube.com/embed/videoseries?list=PLAD5B88D6F7C85C5E" },
+    { title: "Quantum Physics Explained", src: "https://www.youtube.com/embed/videoseries?list=PLDesaqWTN6ESc1C8_aZ41Q31Q02s48590" }
+  ],
+  chem: [
+    { title: "Electrochemistry Full Tutorial", src: "https://www.youtube.com/embed/videoseries?list=PLDesaqWTN6ESc1C8_aZ41Q31Q02s48590" },
+    { title: "Water Technology Lectures", src: "https://www.youtube.com/embed/videoseries?list=PLAD5B88D6F7C85C5E" }
+  ],
+  c: [
+    { title: "C Pointers & Arrays Guide", src: "https://www.youtube.com/embed/videoseries?list=PLDesaqWTN6ESy15i05Qlh4C3gZ9oDugM3" },
+    { title: "Data Structures in C", src: "https://www.youtube.com/embed/videoseries?list=PLBlnK6fEyqRiw-gRMC8yKyhyYQD3156L8" }
+  ],
+  eee: [
+    { title: "AC Circuit Analysis Course", src: "https://www.youtube.com/embed/videoseries?list=PLBlnK6fEyqRiw-gRMC8yKyhyYQD3156L8" },
+    { title: "Transformers and DC Circuits", src: "https://www.youtube.com/embed/videoseries?list=PLDesaqWTN6ESy15i05Qlh4C3gZ9oDugM3" }
+  ]
+};
+
+const DEFAULT_MATERIALS = {
+  math: [
+    { title: "Higher Engineering Mathematics", author: "B.S. Grewal", type: "Book", color: "#5B8DEF" },
+    { title: "Unit Notes — Compiled", author: "Faculty Notes", type: "Notes", color: "#F4A259" },
+    { title: "Problem Solving Workbook", author: "Lab Manual", type: "Book", color: "#7C9885" }
+  ],
+  phy: [
+    { title: "Textbook of Engineering Physics", author: "M.N. Avadhanulu", type: "Book", color: "#5B8DEF" },
+    { title: "Quantum Physics Lecture Slides", author: "Faculty Notes", type: "Notes", color: "#F4A259" },
+    { title: "Optics Lab Instructions", author: "Lab Manual", type: "Book", color: "#7C9885" }
+  ],
+  chem: [
+    { title: "Engineering Chemistry", author: "Jain & Jain", type: "Book", color: "#5B8DEF" },
+    { title: "Water Chemistry Lab Notes", author: "Faculty Notes", type: "Notes", color: "#F4A259" },
+    { title: "Electrochemistry Cheat Sheet", author: "Reference", type: "Book", color: "#7C9885" }
+  ],
+  c: [
+    { title: "The C Programming Language", author: "Kernighan & Ritchie", type: "Book", color: "#5B8DEF" },
+    { title: "Pointers and Memory Notes", author: "Faculty Notes", type: "Notes", color: "#F4A259" },
+    { title: "Programming Practice Problems", author: "Lab Manual", type: "Book", color: "#7C9885" }
+  ],
+  eee: [
+    { title: "Electrical Technology Vol I & II", author: "B.L. Theraja", type: "Book", color: "#5B8DEF" },
+    { title: "AC Circuits & Network Analysis", author: "Faculty Notes", type: "Notes", color: "#F4A259" },
+    { title: "Basic Electrical Lab Guide", author: "Lab Manual", type: "Book", color: "#7C9885" }
+  ]
+};
+
+const DEFAULT_LINKS = {
+  math: [
+    { title: "GeeksforGeeks — Engineering Mathematics", url: "https://www.geeksforgeeks.org/engineering-mathematics-tutorials/", type: "Website" },
+    { title: "NPTEL Mathematics Course Lectures", url: "https://nptel.ac.in/", type: "NPTEL" }
+  ],
+  phy: [
+    { title: "Physics Classroom Simulations", url: "https://www.physicsclassroom.com", type: "Simulations" },
+    { title: "PhET Interactive Physics Lab Simulations", url: "https://phet.colorado.edu/", type: "Lab Resource" }
+  ],
+  chem: [
+    { title: "ChemGuide Inorganic/Physical Chemistry", url: "https://www.chemguide.co.uk", type: "Website" },
+    { title: "Virtual Chemistry Lab Experiments", url: "http://chemcollective.org/", type: "Virtual Lab" }
+  ],
+  c: [
+    { title: "cplusplus.com C Library Reference", url: "https://cplusplus.com/reference/clibrary/", type: "Documentation" },
+    { title: "Learn C Programming Tutorial", url: "https://www.learn-c.org/", type: "Tutorial" }
+  ],
+  eee: [
+    { title: "All About Circuits Education", url: "https://www.allaboutcircuits.com", type: "Reference" },
+    { title: "Circuit Simulator Applet", url: "https://www.falstad.com/circuit/", type: "Simulator" }
+  ]
+};
+
+function getEmbedUrl(url) {
+  if (!url) return "";
+  if (url.includes("youtube.com/embed/")) return url;
+  
+  // Standard video url
+  let watchMatch = url.match(/[?&]v=([^&#\?]+)/);
+  if (watchMatch && watchMatch[1]) {
+    return `https://www.youtube.com/embed/${watchMatch[1]}`;
+  }
+  
+  // Short share url
+  if (url.includes("youtu.be/")) {
+    let parts = url.split("youtu.be/");
+    if (parts[1]) {
+      let videoId = parts[1].split(/[?&#]/)[0];
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
+  }
+  
+  // Playlist url
+  let listMatch = url.match(/[?&]list=([^&#\?]+)/);
+  if (listMatch && listMatch[1]) {
+    return `https://www.youtube.com/embed/videoseries?list=${listMatch[1]}`;
+  }
+  
+  return url;
+}
+
+function VideoEmbedCard({ video, delay, onDelete }) {
+  const [clicked, setClicked] = useState(false);
+
+  return (
+    <div className="glass rounded-2xl overflow-hidden shadow-sm float-in relative group" style={{ animationDelay: `${delay}ms` }}>
+      {onDelete && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 hover:bg-red-500 text-white/80 hover:text-white transition-colors z-20 opacity-0 group-hover:opacity-100 focus:opacity-100"
+          title="Remove video resource"
+        >
+          <I name="x" size={14} />
+        </button>
+      )}
+      <div className="aspect-video bg-black flex items-center justify-center relative">
+        {clicked ? (
+          <iframe
+            src={video.src}
+            title={video.title}
+            className="w-full h-full border-0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            loading="lazy"
+          ></iframe>
+        ) : (
+          <div
+            onClick={() => setClicked(true)}
+            className="absolute inset-0 cursor-pointer flex items-center justify-center bg-[#1E1B4B] hover:bg-[#2a266a] transition-colors group"
+          >
+            <div className="absolute inset-0 opacity-10 bg-gradient-to-br from-[#FF6B5B] to-[#F4A259]"></div>
+            <I name="play" size={40} className="text-white/80 group-hover:text-white group-hover:scale-110 transition-transform z-10" />
+            <span className="absolute bottom-2 right-2 text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded z-10">Play Video</span>
+          </div>
+        )}
+      </div>
+      <div className="p-3 text-left">
+        <p className="text-sm font-medium text-[#1E1B4B] dark:text-white truncate">{video.title}</p>
+        <p className="text-xs text-[#1E1B4B]/40 dark:text-white/40 mt-0.5">YouTube Reference • Embedded</p>
+      </div>
+    </div>
+  );
+}
+
+function AddMaterialModal({ onClose, onSave, activeSubject }) {
+  const [title, setTitle] = useState("");
+  const [type, setType] = useState("Book");
+  const [url, setUrl] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    onSave({
+      id: Date.now(),
+      title: title.trim(),
+      type,
+      url: url.trim(),
+      subject: activeSubject,
+      color: type === "Book" ? "#5B8DEF" : type === "Notes" ? "#F4A259" : type === "Video" ? "#FF6B5B" : "#7C9885",
+      author: type === "Book" ? "Reference Text" : "Shared Resource"
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-[#1E1B4B] rounded-3xl max-w-md w-full p-6 shadow-2xl relative float-in overflow-hidden border border-[var(--line)]" onClick={e=>e.stopPropagation()}>
+        <div className="absolute top-0 left-0 right-0 h-2 bg-[#5B8DEF]"></div>
+        
+        <div className="flex items-start justify-between mb-4 pt-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-[#5B8DEF]/10 text-[#5B8DEF]">
+              <I name="book-open" size={22} />
+            </div>
+            <div>
+              <h2 className="font-display text-lg font-bold text-[#1E1B4B] dark:text-white">Add Study Material</h2>
+              <p className="text-xs text-[#1E1B4B]/40 dark:text-white/40 mt-0.5">Share or bookmark a study resource</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-[#1E1B4B]/30 hover:text-[#1E1B4B] dark:text-white/30 dark:hover:text-white w-8 h-8 rounded-full hover:bg-[#1E1B4B]/5 flex items-center justify-center transition-colors">
+            <I name="x" size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4 text-left">
+          <div>
+            <label className="text-xs font-semibold text-[#1E1B4B]/50 dark:text-white/40 uppercase tracking-wider mb-1 block">Title *</label>
+            <input
+              type="text"
+              required
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="e.g. Unit 3 Quantum Mechanics Notes"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-transparent text-sm text-[#1E1B4B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5B8DEF]/30 placeholder:text-[#1E1B4B]/30"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-[#1E1B4B]/50 dark:text-white/40 uppercase tracking-wider mb-1 block">Type *</label>
+            <select
+              value={type}
+              onChange={e => setType(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white dark:bg-[#201d4a] text-sm text-[#1E1B4B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5B8DEF]/30"
+            >
+              <option value="Book">Book</option>
+              <option value="Notes">Notes</option>
+              <option value="Video">Video Link</option>
+              <option value="Link">Website Link / PDF</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-[#1E1B4B]/50 dark:text-white/40 uppercase tracking-wider mb-1 block">URL or Link (Optional)</label>
+            <input
+              type="text"
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              placeholder="e.g. https://drive.google.com/... or YouTube link"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-transparent text-sm text-[#1E1B4B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5B8DEF]/30 placeholder:text-[#1E1B4B]/30"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-3 border-t border-[var(--line)] mt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl bg-[#1E1B4B]/5 hover:bg-[#1E1B4B]/10 dark:bg-white/5 dark:hover:bg-white/10 text-[#1E1B4B] dark:text-white text-sm font-semibold transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold shadow-lg transition-all active:scale-[0.98] bg-[#5B8DEF] hover:bg-[#4a72cc]"
+            >
+              Save Material
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function StudyMaterial({ items = [], setItems }) {
+  const { showToast } = useToast();
   const [activeSubject, setActiveSubject] = useState(SUBJECTS[0].id);
+  const [showAddModal, setShowAddModal] = useState(false);
+
   const subj = subjectById(activeSubject);
 
-  const books = [
-    { title: "Higher Engineering Mathematics", author: "B.S. Grewal", color: "#5B8DEF" },
-    { title: "Unit Notes — Compiled", author: "Faculty Notes", color: "#F4A259" },
-    { title: "Problem Solving Workbook", author: "Lab Manual", color: "#7C9885" },
+  const customMaterials = items ? items.filter(m => m.subject === activeSubject) : [];
+
+  const seedBooksAndNotes = DEFAULT_MATERIALS[activeSubject] || [];
+  const seedLinks = DEFAULT_LINKS[activeSubject] || [];
+  const defaultVideos = SUBJECT_VIDEOS[activeSubject] || [];
+
+  const customBooksAndNotes = customMaterials.filter(m => m.type === "Book" || m.type === "Notes");
+  const customLinks = customMaterials.filter(m => m.type === "Link");
+  const customVideos = customMaterials.filter(m => m.type === "Video");
+
+  const displayedBooks = [...seedBooksAndNotes, ...customBooksAndNotes];
+  
+  const displayedLinks = [
+    ...seedLinks.map(l => ({ ...l, icon: "globe" })),
+    ...customLinks.map(l => ({
+      title: l.title,
+      url: l.url,
+      type: "Link",
+      icon: "link",
+      id: l.id
+    }))
   ];
+
+  const displayedVideos = [
+    ...defaultVideos,
+    ...customVideos.map(v => ({
+      title: v.title,
+      src: getEmbedUrl(v.url),
+      id: v.id
+    }))
+  ];
+
+  const handleRemoveMaterial = (id) => {
+    if (confirm("Are you sure you want to remove this study resource?")) {
+      setItems(items.filter(m => m.id !== id));
+      showToast("Resource removed successfully!", "info");
+    }
+  };
 
   return (
     <div>
       <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-none pb-1">
         {SUBJECTS.map(s => (
           <button key={s.id} onClick={() => setActiveSubject(s.id)}
-            className={`shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2 ${activeSubject===s.id ? "text-white" : "bg-white text-[#1E1B4B]/60 hover:bg-[#1E1B4B]/5"}`}
+            className={`shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2 ${activeSubject===s.id ? "text-white" : "bg-white dark:bg-white/5 text-[#1E1B4B]/60 dark:text-white/60 hover:bg-[#1E1B4B]/5 dark:hover:bg-white/10"}`}
             style={activeSubject===s.id ? {background: s.color} : {}}>
             <I name={s.icon} size={14} /> {s.name}
           </button>
         ))}
       </div>
 
-      <h3 className="font-display font-semibold text-[#1E1B4B] mb-3 flex items-center gap-2"><I name="book-open" size={18} className="text-[#5B8DEF]"/> Books & Notes</h3>
+      <h3 className="font-display font-semibold text-[#1E1B4B] dark:text-white mb-3 flex items-center gap-2">
+        <I name="book-open" size={18} className="text-[#5B8DEF]"/> Books & Notes
+      </h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
-        {books.map((b,i) => (
-          <div key={i} className="glass rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow float-in" style={{animationDelay:`${i*60}ms`}}>
-            <div className="h-24 flex items-center justify-center" style={{background:`${b.color}1A`}}>
-              <I name="book" size={32} className="" />
+        {displayedBooks.map((b, i) => (
+          <div key={i} className="glass rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all float-in relative group" style={{animationDelay:`${i*60}ms`}}>
+            {b.id && (
+              <button
+                onClick={() => handleRemoveMaterial(b.id)}
+                className="absolute top-2 right-2 p-1 rounded-lg bg-black/60 hover:bg-red-500 text-white/80 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                title="Remove study material"
+              >
+                <I name="x" size={12} />
+              </button>
+            )}
+            <div className="h-24 flex items-center justify-center" style={{background:`${b.color || '#5B8DEF'}1A`}}>
+              <I name="book" size={32} style={{ color: b.color || '#5B8DEF' }} />
             </div>
-            <div className="p-3">
-              <p className="text-sm font-medium text-[#1E1B4B] truncate">{b.title}</p>
-              <p className="text-xs text-[#1E1B4B]/40">{b.author}</p>
+            <div className="p-3 text-left">
+              <p className="text-sm font-medium text-[#1E1B4B] dark:text-white truncate">{b.title}</p>
+              <p className="text-xs text-[#1E1B4B]/40 dark:text-white/40">{b.author || "Faculty Notes"}</p>
             </div>
           </div>
         ))}
-        <div className="glass rounded-2xl border-2 border-dashed border-[var(--line)] flex items-center justify-center min-h-[140px] cursor-pointer hover:bg-white/40 transition-colors">
-          <div className="text-center"><I name="plus-circle" size={24} className="text-[#1E1B4B]/30 mx-auto mb-1"/><p className="text-xs text-[#1E1B4B]/40">Add material</p></div>
+        <div onClick={() => setShowAddModal(true)} className="glass rounded-2xl border-2 border-dashed border-[var(--line)] flex items-center justify-center min-h-[140px] cursor-pointer hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
+          <div className="text-center">
+            <I name="plus" size={24} className="text-[#1E1B4B]/30 dark:text-white/30 mx-auto mb-1"/>
+            <p className="text-xs text-[#1E1B4B]/40 dark:text-white/40">Add material</p>
+          </div>
         </div>
       </div>
 
-      <h3 className="font-display font-semibold text-[#1E1B4B] mb-3 flex items-center gap-2"><I name="play-circle" size={18} className="text-[#FF6B5B]"/> Video Resources</h3>
+      <h3 className="font-display font-semibold text-[#1E1B4B] dark:text-white mb-3 flex items-center gap-2">
+        <I name="play" size={18} className="text-[#FF6B5B]"/> Video Resources
+      </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-        {[1,2].map(i => (
-          <div key={i} className="glass rounded-2xl overflow-hidden shadow-sm float-in" style={{animationDelay:`${i*70}ms`}}>
-            <div className="aspect-video bg-[#1E1B4B] flex items-center justify-center relative">
-              <I name="play" size={32} className="text-white/80" />
-              <span className="absolute bottom-2 right-2 text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded">YouTube Playlist</span>
+        {displayedVideos.map((vid, idx) => (
+          <VideoEmbedCard
+            key={idx}
+            video={vid}
+            delay={idx * 70}
+            onDelete={vid.id ? () => handleRemoveMaterial(vid.id) : null}
+          />
+        ))}
+      </div>
+
+      <h3 className="font-display font-semibold text-[#1E1B4B] dark:text-white mb-3 flex items-center gap-2">
+        <I name="link" size={18} className="text-[#7C9885]"/> Additional Resources
+      </h3>
+      <div className="space-y-2">
+        {displayedLinks.map((r, i) => (
+          <div
+            key={i}
+            onClick={() => r.url && window.open(r.url, "_blank")}
+            className="glass rounded-xl p-3 flex items-center gap-3 hover:bg-white/60 dark:hover:bg-white/10 transition-colors cursor-pointer text-left relative group border border-[var(--line)]"
+          >
+            <div className="w-8 h-8 rounded-lg bg-[#1E1B4B]/5 dark:bg-white/5 flex items-center justify-center">
+              <I name={r.icon || "link"} size={15}/>
             </div>
-            <div className="p-3">
-              <p className="text-sm font-medium text-[#1E1B4B]">{subj.name} — Full Course Playlist</p>
-              <p className="text-xs text-[#1E1B4B]/40 mt-0.5">12 videos • Embedded</p>
-            </div>
+            <p className="text-sm text-[#1E1B4B]/70 dark:text-white/70 flex-1 truncate">{r.title}</p>
+            <span className="text-xs text-[#1E1B4B]/30 dark:text-white/30 shrink-0">{r.type}</span>
+            {r.id ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRemoveMaterial(r.id);
+                }}
+                className="text-[#1E1B4B]/30 dark:text-white/30 hover:text-red-500 p-1.5 rounded hover:bg-red-500/10 transition-colors"
+                title="Remove link"
+              >
+                <I name="x" size={13} />
+              </button>
+            ) : (
+              <I name="globe" size={14} className="text-[#1E1B4B]/30 dark:text-white/30 shrink-0"/>
+            )}
           </div>
         ))}
       </div>
 
-      <h3 className="font-display font-semibold text-[#1E1B4B] mb-3 flex items-center gap-2"><I name="link" size={18} className="text-[#7C9885]"/> Additional Resources</h3>
-      <div className="space-y-2">
-        {[
-          { icon: "globe", label: "GeeksforGeeks — " + subj.name, type: "Website" },
-          { icon: "file-text", label: "Lecture Notes — Unit 1-5 Compiled", type: "PDF" },
-          { icon: "hard-drive", label: "Shared Drive Folder — Reference Material", type: "Drive Link" },
-        ].map((r,i) => (
-          <div key={i} className="glass rounded-xl p-3 flex items-center gap-3 hover:bg-white/60 transition-colors cursor-pointer">
-            <div className="w-8 h-8 rounded-lg bg-[#1E1B4B]/5 flex items-center justify-center"><I name={r.icon} size={15}/></div>
-            <p className="text-sm text-[#1E1B4B]/70 flex-1">{r.label}</p>
-            <span className="text-xs text-[#1E1B4B]/30">{r.type}</span>
-            <I name="external-link" size={14} className="text-[#1E1B4B]/30"/>
+      {showAddModal && (
+        <AddMaterialModal
+          activeSubject={activeSubject}
+          onClose={() => setShowAddModal(false)}
+          onSave={(newMat) => {
+            setItems([newMat, ...items]);
+            setShowAddModal(false);
+            showToast("Study resource added successfully!", "success");
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------- CALENDAR ADD EVENT MODAL ----------
+function AddEventModal({ onClose, onSave, initialDate }) {
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState(initialDate || "");
+  const [type, setType] = useState("study");
+  const [color, setColor] = useState("#7C9885");
+  const [time, setTime] = useState("");
+  const [venue, setVenue] = useState("");
+
+  const typeColors = {
+    study: "#7C9885",
+    personal: "#5B8DEF",
+    assignment: "#FF6B5B",
+    ca: "#F4A259",
+    exam: "#9B6BFF"
+  };
+
+  const handleTypeChange = (newType) => {
+    setType(newType);
+    setColor(typeColors[newType] || "#7C9885");
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!title.trim() || !date) return;
+    onSave({
+      id: Date.now(),
+      title: title.trim(),
+      date,
+      type,
+      color,
+      time: time.trim(),
+      venue: venue.trim()
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-[#1E1B4B] rounded-3xl max-w-md w-full p-6 shadow-2xl relative float-in overflow-hidden border border-[var(--line)]" onClick={e=>e.stopPropagation()}>
+        <div className="absolute top-0 left-0 right-0 h-2" style={{ backgroundColor: color }}></div>
+        
+        <div className="flex items-start justify-between mb-4 pt-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ color: color, backgroundColor: `${color}1A` }}>
+              <I name="calendar" size={22} />
+            </div>
+            <div>
+              <h2 className="font-display text-lg font-bold text-[#1E1B4B] dark:text-white">Add Calendar Event</h2>
+              <p className="text-xs text-[#1E1B4B]/40 dark:text-white/40 mt-0.5">Schedule a personal task or study group</p>
+            </div>
           </div>
-        ))}
+          <button onClick={onClose} className="text-[#1E1B4B]/30 hover:text-[#1E1B4B] dark:text-white/30 dark:hover:text-white w-8 h-8 rounded-full hover:bg-[#1E1B4B]/5 flex items-center justify-center transition-colors">
+            <I name="x" size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4 text-left">
+          <div>
+            <label className="text-xs font-semibold text-[#1E1B4B]/50 dark:text-white/40 uppercase tracking-wider mb-1 block">Event Title *</label>
+            <input
+              type="text"
+              required
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="e.g. Group Study Session"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-transparent text-sm text-[#1E1B4B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5B8DEF]/30 placeholder:text-[#1E1B4B]/30"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-semibold text-[#1E1B4B]/50 dark:text-white/40 uppercase tracking-wider mb-1 block">Date *</label>
+              <input
+                type="date"
+                required
+                value={date}
+                onChange={e => setDate(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-transparent text-sm text-[#1E1B4B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5B8DEF]/30"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-[#1E1B4B]/50 dark:text-white/40 uppercase tracking-wider mb-1 block">Type *</label>
+              <select
+                value={type}
+                onChange={e => handleTypeChange(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white dark:bg-[#201d4a] text-sm text-[#1E1B4B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5B8DEF]/30"
+              >
+                <option value="study">Study Session</option>
+                <option value="personal">Personal / Task</option>
+                <option value="assignment">Assignment Deadline</option>
+                <option value="ca">Continuous Assessment (CA)</option>
+                <option value="exam">Semester Exam</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-semibold text-[#1E1B4B]/50 dark:text-white/40 uppercase tracking-wider mb-1 block">Time (Optional)</label>
+              <input
+                type="text"
+                value={time}
+                onChange={e => setTime(e.target.value)}
+                placeholder="e.g. 10:00 AM"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-transparent text-sm text-[#1E1B4B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5B8DEF]/30 placeholder:text-[#1E1B4B]/30"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-[#1E1B4B]/50 dark:text-white/40 uppercase tracking-wider mb-1 block">Venue (Optional)</label>
+              <input
+                type="text"
+                value={venue}
+                onChange={e => setVenue(e.target.value)}
+                placeholder="e.g. Library Room 3"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-transparent text-sm text-[#1E1B4B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5B8DEF]/30 placeholder:text-[#1E1B4B]/30"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-[#1E1B4B]/50 dark:text-white/40 uppercase tracking-wider mb-1 block">Theme Color</label>
+            <div className="flex items-center gap-2 mt-1.5">
+              {Object.entries(typeColors).map(([t, c]) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  className={`w-6 h-6 rounded-full border-2 transition-all ${color === c ? "border-[#1E1B4B] dark:border-white scale-110" : "border-transparent opacity-80 hover:opacity-100"}`}
+                  style={{ backgroundColor: c }}
+                  title={t.charAt(0).toUpperCase() + t.slice(1)}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-3 border-t border-[var(--line)] mt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl bg-[#1E1B4B]/5 hover:bg-[#1E1B4B]/10 dark:bg-white/5 dark:hover:bg-white/10 text-[#1E1B4B] dark:text-white text-sm font-semibold transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold shadow-lg transition-all active:scale-[0.98]"
+              style={{ backgroundColor: color }}
+            >
+              Save Event
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
 }
 
-// ---------- CALENDAR ----------
-function CalendarModule({ cas }) {
+// ---------- CALENDAR MODULE ----------
+function CalendarModule({ cas = [], assignments = [], events = [], setEvents }) {
+  const { showToast } = useToast();
   const [view, setView] = useState("month");
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [showAddEvent, setShowAddEvent] = useState(false);
+  const [initialAddDate, setInitialAddDate] = useState("");
 
-  const events = [
-    ...ASSIGNMENTS.map(a => ({ date: a.due, title: a.title, type: "assignment", color: "#FF6B5B", subject: subjectById(a.subject).name })),
-    ...cas.map(c => ({
-      date: c.date,
-      title: `${c.name} — ${subjectById(c.subject).name}`,
-      type: c.type === "ca" ? "ca" : "exam",
-      color: c.type === "ese" ? "#9B6BFF" : c.type === "mt" ? "#5B8DEF" : "#F4A259",
-      subject: subjectById(c.subject).name,
-      time: c.time,
-      venue: c.venue
-    })),
-    { date: "2026-06-13", title: "Group Study — Differential Equations", type: "study", color: "#7C9885", subject: "Engineering Mathematics" },
-    { date: "2026-06-17", title: "Group Study — Pointers Practice", type: "study", color: "#7C9885", subject: "Programming in C" },
+  const todayDate = new Date();
+  const [viewYear, setViewYear] = useState(todayDate.getFullYear());
+  const [viewMonth, setViewMonth] = useState(todayDate.getMonth()); // 0-11
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
   ];
 
-  // June 2026 calendar grid (June 1, 2026 is a Monday)
-  const daysInMonth = 30;
-  const startOffset = 1; // June 1 2026 = Monday (index 1 if Sun=0)
-  const cells = [];
-  for (let i=0;i<startOffset;i++) cells.push(null);
-  for (let d=1; d<=daysInMonth; d++) cells.push(d);
+  const parseLocalDate = (dateStr) => {
+    if (!dateStr) return null;
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      return {
+        year: parseInt(parts[0], 10),
+        month: parseInt(parts[1], 10) - 1, // 0-indexed
+        day: parseInt(parts[2], 10)
+      };
+    }
+    const dObj = new Date(dateStr);
+    return {
+      year: dObj.getFullYear(),
+      month: dObj.getMonth(),
+      day: dObj.getDate()
+    };
+  };
 
-  const eventsForDay = (d) => events.filter(e => new Date(e.date).getDate() === d && new Date(e.date).getMonth() === 5);
+  const allEvents = [
+    ...assignments.map(a => ({
+      id: `assignment-${a.id}`,
+      date: a.due,
+      title: a.title,
+      type: "assignment",
+      color: "#FF6B5B",
+      subject: subjectById(a.subject)?.name || a.subject,
+      time: "",
+      venue: ""
+    })),
+    ...cas.map(c => ({
+      id: `ca-${c.id}`,
+      date: c.date,
+      title: `${c.name} — ${subjectById(c.subject)?.name || c.subject}`,
+      type: c.type === "ese" ? "exam" : c.type === "mt" ? "exam" : "ca",
+      color: c.type === "ese" ? "#9B6BFF" : c.type === "mt" ? "#5B8DEF" : "#F4A259",
+      subject: subjectById(c.subject)?.name || c.subject,
+      time: c.time || "",
+      venue: c.venue || ""
+    })),
+    ...events.map(e => ({
+      id: `custom-${e.id}`,
+      date: e.date,
+      title: e.title,
+      type: e.type || "personal",
+      color: e.color || "#7C9885",
+      subject: e.subject || "Personal",
+      time: e.time || "",
+      venue: e.venue || ""
+    }))
+  ];
+
+  const handlePrevMonth = () => {
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear(viewYear - 1);
+    } else {
+      setViewMonth(viewMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear(viewYear + 1);
+    } else {
+      setViewMonth(viewMonth + 1);
+    }
+  };
+
+  const handleGoToToday = () => {
+    const now = new Date();
+    setViewMonth(now.getMonth());
+    setViewYear(now.getFullYear());
+  };
+
+  const isToday = (day) => {
+    const now = new Date();
+    return day === now.getDate() && viewMonth === now.getMonth() && viewYear === now.getFullYear();
+  };
+
+  const getEventsForDay = (d) => {
+    if (!d) return [];
+    return allEvents.filter(e => {
+      const parsed = parseLocalDate(e.date);
+      if (!parsed) return false;
+      return parsed.year === viewYear && parsed.month === viewMonth && parsed.day === d;
+    });
+  };
+
+  const handleDeleteEvent = (eventToDelete) => {
+    if (confirm("Are you sure you want to delete this event?")) {
+      setEvents(events.filter(e => e.id !== eventToDelete.id));
+      showToast("Event deleted successfully!", "success");
+    }
+  };
+
+  const firstDayOfMonth = new Date(viewYear, viewMonth, 1);
+  const startOffset = firstDayOfMonth.getDay(); 
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+  const cells = [];
+  for (let i = 0; i < startOffset; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
   return (
     <div>
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div className="flex items-center gap-2">
-          {["Day","Week","Month","Year"].map(v => (
-            <button key={v} onClick={() => setView(v.toLowerCase())}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${view===v.toLowerCase() ? "bg-[#1E1B4B] text-white" : "bg-white text-[#1E1B4B]/60 hover:bg-[#1E1B4B]/5"}`}>
-              {v}
-            </button>
-          ))}
+          {["Month", "List View"].map(v => {
+            const val = v === "Month" ? "month" : "list";
+            return (
+              <button key={v} onClick={() => setView(val)}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${view===val ? "bg-[#1E1B4B] dark:bg-white text-white dark:text-[#1E1B4B]" : "bg-white dark:bg-white/5 text-[#1E1B4B]/60 dark:text-white/60 hover:bg-[#1E1B4B]/5 dark:hover:bg-white/10"}`}>
+                {v}
+              </button>
+            );
+          })}
         </div>
+
         <div className="flex items-center gap-3">
-          <button className="w-9 h-9 rounded-lg bg-white flex items-center justify-center text-[#1E1B4B]/50 hover:bg-[#1E1B4B]/5"><I name="chevron-left" size={16}/></button>
-          <span className="font-display font-semibold text-[#1E1B4B]">June 2026</span>
-          <button className="w-9 h-9 rounded-lg bg-white flex items-center justify-center text-[#1E1B4B]/50 hover:bg-[#1E1B4B]/5"><I name="chevron-right" size={16}/></button>
+          <button onClick={handlePrevMonth} className="w-9 h-9 rounded-lg bg-white dark:bg-white/5 border border-[var(--line)] flex items-center justify-center text-[#1E1B4B]/50 dark:text-white/50 hover:bg-[#1E1B4B]/5 dark:hover:bg-white/10 transition-colors">
+            <I name="chevron-left" size={16}/>
+          </button>
+          <span onClick={handleGoToToday} className="font-display font-semibold text-[#1E1B4B] dark:text-white cursor-pointer hover:text-[#5B8DEF] transition-colors min-w-[110px] text-center select-none">
+            {monthNames[viewMonth]} {viewYear}
+          </span>
+          <button onClick={handleNextMonth} className="w-9 h-9 rounded-lg bg-white dark:bg-white/5 border border-[var(--line)] flex items-center justify-center text-[#1E1B4B]/50 dark:text-white/50 hover:bg-[#1E1B4B]/5 dark:hover:bg-white/10 transition-colors">
+            <I name="chevron-right" size={16}/>
+          </button>
         </div>
+
+        <button
+          onClick={() => {
+            const now = new Date();
+            const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            setInitialAddDate(formattedDate);
+            setShowAddEvent(true);
+          }}
+          className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#5B8DEF] hover:bg-[#4a72cc] flex items-center gap-2 transition-all shadow-md active:scale-95"
+        >
+          <I name="plus" size={16}/> Add Event
+        </button>
       </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap gap-4 mb-4 text-xs text-[#1E1B4B]/60">
-        {[["Assignment Deadlines","#FF6B5B"],["CAs","#F4A259"],["Exams","#5B8DEF"],["Study Tasks","#7C9885"]].map(([l,c])=>(
+      <div className="flex flex-wrap gap-4 mb-4 text-xs text-[#1E1B4B]/60 dark:text-white/50">
+        {[["Assignment Deadlines","#FF6B5B"],["CAs","#F4A259"],["Exams","#5B8DEF"],["Study/Personal","#7C9885"]].map(([l,c])=>(
           <span key={l} className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{background:c}}></span>{l}</span>
         ))}
       </div>
 
       {view === "month" && (
-        <div className="glass rounded-2xl p-4 shadow-sm">
+        <div className="glass rounded-3xl p-4 shadow-sm border border-[var(--line)]">
           <div className="grid grid-cols-7 gap-2 mb-2">
             {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
-              <div key={d} className="text-center text-xs font-semibold text-[#1E1B4B]/40 py-2">{d}</div>
+              <div key={d} className="text-center text-xs font-semibold text-[#1E1B4B]/40 dark:text-white/40 py-2">{d}</div>
             ))}
           </div>
           <div className="grid grid-cols-7 gap-2">
             {cells.map((d, i) => {
-              const dayEvents = d ? eventsForDay(d) : [];
-              const isToday = d === 11;
+              const dayEvents = d ? getEventsForDay(d) : [];
+              const isCurrentToday = d && isToday(d);
               return (
-                <div key={i} className={`min-h-[90px] rounded-xl p-1.5 ${d ? "bg-white/50 hover:bg-white/80" : ""} transition-colors ${isToday ? "ring-2 ring-[#FF6B5B]" : ""}`}>
-                  {d && <p className={`text-xs font-medium mb-1 ${isToday ? "text-[#FF6B5B]" : "text-[#1E1B4B]/50"}`}>{d}</p>}
-                  <div className="space-y-1">
-                    {dayEvents.slice(0,2).map((e,idx) => (
-                      <div key={idx} onClick={() => setSelectedEvent(e)} className="text-[10px] px-1.5 py-0.5 rounded truncate cursor-pointer text-white font-medium" style={{background:e.color}}>
-                        {e.title}
-                      </div>
-                    ))}
-                    {dayEvents.length > 2 && <p className="text-[10px] text-[#1E1B4B]/30 px-1.5">+{dayEvents.length-2} more</p>}
+                <div
+                  key={i}
+                  onClick={() => d && setSelectedDay({ day: d, month: viewMonth, year: viewYear })}
+                  className={`min-h-[95px] rounded-xl p-1.5 transition-all flex flex-col justify-between border ${
+                    d 
+                      ? "bg-white/50 hover:bg-white/80 dark:bg-white/5 dark:hover:bg-white/10 cursor-pointer border-[var(--line)]" 
+                      : "opacity-0 pointer-events-none border-transparent"
+                  } ${isCurrentToday ? "ring-2 ring-[#FF6B5B] border-[#FF6B5B]" : ""}`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`text-xs font-semibold ${isCurrentToday ? "text-[#FF6B5B]" : "text-[#1E1B4B]/50 dark:text-white/40"}`}>
+                        {d}
+                      </span>
+                      {isCurrentToday && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B5B]"></span>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      {dayEvents.slice(0, 2).map((e, idx) => (
+                        <div
+                          key={idx}
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            setSelectedEvent(e);
+                          }}
+                          className="text-[9px] px-1.5 py-0.5 rounded truncate font-medium text-white shadow-sm hover:scale-[1.02] transition-transform"
+                          style={{ backgroundColor: e.color }}
+                          title={e.title}
+                        >
+                          {e.title}
+                        </div>
+                      ))}
+                      {dayEvents.length > 2 && (
+                        <p className="text-[9px] text-[#1E1B4B]/40 dark:text-white/40 font-medium pl-1">
+                          +{dayEvents.length - 2} more
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -2071,38 +2692,153 @@ function CalendarModule({ cas }) {
         </div>
       )}
 
-      {view !== "month" && (
-        <div className="glass rounded-2xl p-8 shadow-sm text-center">
-          <I name="calendar-range" size={36} className="text-[#1E1B4B]/20 mx-auto mb-3"/>
-          <p className="text-sm text-[#1E1B4B]/50">{view.charAt(0).toUpperCase()+view.slice(1)} view — showing same events in a {view} layout.</p>
-          <div className="mt-4 space-y-2 max-w-md mx-auto text-left">
-            {events.slice(0,5).map((e,i) => (
-              <div key={i} onClick={() => setSelectedEvent(e)} className="flex items-center gap-3 p-2.5 bg-white/60 rounded-xl cursor-pointer hover:bg-white">
-                <span className="w-2 h-2 rounded-full" style={{background:e.color}}></span>
-                <span className="text-sm text-[#1E1B4B]/70 flex-1 truncate">{e.title}</span>
-                <span className="text-xs text-[#1E1B4B]/40">{fmtDate(e.date)}</span>
-              </div>
-            ))}
+      {view === "list" && (
+        <div className="glass rounded-3xl p-6 shadow-sm border border-[var(--line)]">
+          <div className="flex items-center gap-2 mb-4">
+            <I name="calendar" size={18} className="text-[#5B8DEF]" />
+            <h4 className="font-display font-semibold text-sm text-[#1E1B4B] dark:text-white">Events in {monthNames[viewMonth]} {viewYear}</h4>
           </div>
+          {allEvents.filter(e => {
+            const parsed = parseLocalDate(e.date);
+            return parsed && parsed.year === viewYear && parsed.month === viewMonth;
+          }).length === 0 ? (
+            <div className="text-center py-8">
+              <I name="calendar" size={36} className="text-[#1E1B4B]/20 dark:text-white/20 mx-auto mb-3"/>
+              <p className="text-sm text-[#1E1B4B]/50 dark:text-white/50">No events scheduled for this month.</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-w-2xl mx-auto text-left">
+              {allEvents
+                .filter(e => {
+                  const parsed = parseLocalDate(e.date);
+                  return parsed && parsed.year === viewYear && parsed.month === viewMonth;
+                })
+                .sort((a, b) => new Date(a.date) - new Date(b.date))
+                .map((e, i) => (
+                  <div key={i} onClick={() => setSelectedEvent(e)} className="flex items-center gap-3 p-3 bg-white/60 dark:bg-white/5 rounded-xl cursor-pointer hover:bg-white dark:hover:bg-white/10 transition-colors border border-[var(--line)]">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: e.color }}></span>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-[9px] px-1.5 py-0.5 rounded text-white shrink-0" style={{ backgroundColor: e.color }}>{e.type}</span>
+                    <span className="text-sm font-medium text-[#1E1B4B] dark:text-white flex-1 truncate">{e.title}</span>
+                    <span className="text-xs text-[#1E1B4B]/40 dark:text-white/40 shrink-0">{fmtDate(e.date)}</span>
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
       )}
 
       {selectedEvent && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedEvent(null)}>
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl" onClick={e=>e.stopPropagation()}>
+          <div className="bg-white dark:bg-[#1E1B4B] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[var(--line)]" onClick={e=>e.stopPropagation()}>
             <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{background:`${selectedEvent.color}1A`, color:selectedEvent.color}}>
-              <I name={selectedEvent.type==='assignment'?'clipboard-list':selectedEvent.type==='ca'?'file-check-2':selectedEvent.type==='exam'?'graduation-cap':'users'} size={18}/>
+              <I name={selectedEvent.type==='assignment'?'book':selectedEvent.type==='ca'?'calendar':selectedEvent.type==='exam'?'award':'user'} size={18}/>
             </div>
-            <h3 className="font-display font-semibold text-[#1E1B4B] mb-1">{selectedEvent.title}</h3>
-            <p className="text-sm text-[#1E1B4B]/50 mb-3">{selectedEvent.subject}</p>
-            <div className="text-sm text-[#1E1B4B]/60 space-y-1">
-              <p className="flex items-center gap-2"><I name="calendar" size={14}/> {fmtDate(selectedEvent.date)}, 2026</p>
+            <h3 className="font-display font-semibold text-[#1E1B4B] dark:text-white mb-1">{selectedEvent.title}</h3>
+            <p className="text-sm text-[#1E1B4B]/50 dark:text-white/50 mb-3">{selectedEvent.subject}</p>
+            <div className="text-sm text-[#1E1B4B]/60 dark:text-white/60 space-y-1.5 text-left border-t border-b border-[var(--line)] py-3">
+              <p className="flex items-center gap-2"><I name="calendar" size={14}/> {fmtDate(selectedEvent.date)}</p>
               {selectedEvent.time && <p className="flex items-center gap-2"><I name="clock" size={14}/> {selectedEvent.time}</p>}
               {selectedEvent.venue && <p className="flex items-center gap-2"><I name="map-pin" size={14}/> {selectedEvent.venue}</p>}
             </div>
-            <button onClick={() => setSelectedEvent(null)} className="mt-4 w-full py-2.5 rounded-xl bg-[#1E1B4B] text-white text-sm font-medium">Close</button>
+            <button onClick={() => setSelectedEvent(null)} className="mt-4 w-full py-2.5 rounded-xl bg-[#1E1B4B] dark:bg-white text-white dark:text-[#1E1B4B] text-sm font-semibold transition-transform hover:scale-[0.98]">Close</button>
           </div>
         </div>
+      )}
+
+      {selectedDay && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 flex items-center justify-end p-0 md:p-4 animate-fadeIn" onClick={() => setSelectedDay(null)}>
+          <div 
+            className="bg-white dark:bg-[#1E1B4B] h-full md:h-[calc(100vh-2rem)] w-full max-w-md p-6 shadow-2xl flex flex-col justify-between md:rounded-3xl border border-[var(--line)] float-in" 
+            onClick={e => e.stopPropagation()}
+          >
+            <div>
+              <div className="flex items-center justify-between pb-4 border-b border-[var(--line)] mb-4">
+                <div>
+                  <h3 className="font-display font-bold text-lg text-[#1E1B4B] dark:text-white">Daily Schedule</h3>
+                  <p className="text-xs text-[#1E1B4B]/40 dark:text-white/40">{monthNames[selectedDay.month]} {selectedDay.day}, {selectedDay.year}</p>
+                </div>
+                <button onClick={() => setSelectedDay(null)} className="text-[#1E1B4B]/30 hover:text-[#1E1B4B] dark:text-white/30 dark:hover:text-white w-8 h-8 rounded-full hover:bg-[#1E1B4B]/5 dark:hover:bg-white/5 flex items-center justify-center transition-colors">
+                  <I name="x" size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-3 overflow-y-auto max-h-[60vh] pr-1">
+                {getEventsForDay(selectedDay.day).length === 0 ? (
+                  <div className="text-center py-8">
+                    <I name="calendar" size={32} className="text-[#1E1B4B]/20 dark:text-white/20 mx-auto mb-2" />
+                    <p className="text-sm text-[#1E1B4B]/40 dark:text-white/40">No events scheduled for this day.</p>
+                  </div>
+                ) : (
+                  getEventsForDay(selectedDay.day).map((e, idx) => {
+                    const isCustom = e.id && e.id.toString().startsWith("custom-");
+                    return (
+                      <div key={idx} className="glass rounded-xl p-3 border border-[var(--line)] flex items-start gap-3 hover:bg-white/60 dark:hover:bg-white/10 transition-colors">
+                        <span className="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: e.color }}></span>
+                        <div className="flex-1 min-w-0 text-left">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs font-semibold uppercase tracking-wider text-[9px] px-1.5 py-0.5 rounded text-white" style={{ backgroundColor: e.color }}>
+                              {e.type}
+                            </span>
+                            {e.subject && <span className="text-xs text-[#1E1B4B]/40 dark:text-white/40 truncate">{e.subject}</span>}
+                          </div>
+                          <p className="text-sm font-semibold text-[#1E1B4B] dark:text-white mt-1">{e.title}</p>
+                          <div className="flex gap-3 text-xs text-[#1E1B4B]/50 dark:text-white/50 mt-1 flex-wrap">
+                            {e.time && <span className="flex items-center gap-1"><I name="clock" size={12}/>{e.time}</span>}
+                            {e.venue && <span className="flex items-center gap-1"><I name="map-pin" size={12}/>{e.venue}</span>}
+                          </div>
+                        </div>
+                        {isCustom && (
+                          <button 
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              const realId = parseInt(e.id.replace("custom-", ""), 10);
+                              handleDeleteEvent({ id: realId });
+                            }}
+                            className="text-[#1E1B4B]/30 hover:text-red-500 p-1.5 rounded hover:bg-red-500/10 transition-colors"
+                            title="Delete event"
+                          >
+                            <I name="x" size={14} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-[var(--line)] mt-4 space-y-2">
+              <button 
+                onClick={() => {
+                  const formattedDate = `${selectedDay.year}-${String(selectedDay.month + 1).padStart(2, '0')}-${String(selectedDay.day).padStart(2, '0')}`;
+                  setInitialAddDate(formattedDate);
+                  setShowAddEvent(true);
+                }}
+                className="w-full py-2.5 rounded-xl bg-[#5B8DEF] hover:bg-[#4a72cc] text-white text-sm font-semibold shadow-lg flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+              >
+                <I name="plus" size={16}/> Add Event
+              </button>
+              <button 
+                onClick={() => setSelectedDay(null)}
+                className="w-full py-2.5 rounded-xl bg-[#1E1B4B]/5 hover:bg-[#1E1B4B]/10 dark:bg-white/5 dark:hover:bg-white/10 text-[#1E1B4B] dark:text-white text-sm font-semibold transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddEvent && (
+        <AddEventModal
+          initialDate={initialAddDate}
+          onClose={() => setShowAddEvent(false)}
+          onSave={(newEvent) => {
+            setEvents(prev => [...prev, newEvent]);
+            setShowAddEvent(false);
+            showToast("Custom event added to calendar!", "success");
+          }}
+        />
       )}
     </div>
   );
@@ -2986,6 +3722,11 @@ function App() {
     { date: "2026-06-17", title: "Group Study — Pointers Practice", type: "study", color: "#7C9885", subject: "Programming in C" },
   ]);
   const [pyqUploads, setPyqUploads] = usePersistedState("pathway-pyq-uploads", []);
+  const [materials, setMaterials] = usePersistedState("pathway-materials", [
+    { id: 1, title: "Higher Engineering Mathematics", author: "B.S. Grewal", subject: "math", type: "Book", color: "#5B8DEF" },
+    { id: 2, title: "Unit Notes — Compiled", author: "Faculty Notes", subject: "math", type: "Notes", color: "#F4A259" },
+    { id: 3, title: "Problem Solving Workbook", author: "Lab Manual", subject: "math", type: "Book", color: "#7C9885" },
+  ]);
   
   const [streak, setStreak] = useState(1);
 
@@ -3068,7 +3809,7 @@ function App() {
         {page === "assignments" && <Assignments items={assignments} setItems={setAssignments} search={search} />}
         {page === "cas" && <CAModule cas={cas} setCas={setCas} />}
         {page === "pyqs" && <PYQModule />}
-        {page === "material" && <StudyMaterial />}
+        {page === "material" && <StudyMaterial items={materials} setItems={setMaterials} />}
         {page === "calendar" && <CalendarModule cas={cas} assignments={assignments} events={events} setEvents={setEvents} />}
         {page === "community" && <HelpEachOther messages={messages} setMessages={setMessages} />}
         {page === "notifications" && <NotificationsModule items={notifications} setItems={setNotifications} />}
