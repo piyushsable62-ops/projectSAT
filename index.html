@@ -8,6 +8,18 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // Without this, Tailwind's `dark:` utilities follow the OS/browser
+  // color-scheme (prefers-color-scheme) instead of the app's own light/dark
+  // toggle. That mismatch is what causes text to look wrong after switching
+  // the in-app theme: if the OS is set to dark but the app is toggled to
+  // light, `dark:` classes still apply (e.g. white text) on top of the now
+  // light background. Switching to the 'class' strategy makes all `dark:`
+  // classes key off the `dark` class on <html>, which is what the app's
+  // theme toggle actually sets — keeping it in sync everywhere, including
+  // Study Material.
+  tailwind.config = { darkMode: 'class' };
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lucide@0.383.0/dist/umd/lucide.js"></script>
@@ -22,6 +34,8 @@
     --sky:#5B8DEF;
     --line:#E8E4DC;
     --card:#FFFFFF;
+    --surface-soft:rgba(255,255,255,0.6);
+    --checkbox-bg:#FFFFFF;
   }
   *{font-family:'Inter',sans-serif;}
   .font-display{font-family:'Space Grotesk',sans-serif;}
@@ -42,7 +56,7 @@
   .scrollbar-none{-ms-overflow-style:none;scrollbar-width:none;}
 
   /* ============ DARK MODE ============ */
-  html.dark{ --ink:#F4F2FF; --paper:#13112E; --line:#2E2A5C; --card:#211D4F; }
+  html.dark{ --ink:#F4F2FF; --paper:#13112E; --line:#2E2A5C; --card:#211D4F; --surface-soft:rgba(244,242,255,0.035); --checkbox-bg:rgba(244,242,255,0.06); }
   html.dark body{ background:var(--paper); }
 
   /* Glass panels / cards */
@@ -312,6 +326,7 @@ const ICON_PATHS = {
   "user":[["path",{d:"M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"}],["circle",{cx:"12",cy:"7",r:"4"}]],
   "palette":[["circle",{cx:"13.5",cy:"6.5",r:".5"}],["circle",{cx:"17.5",cy:"10.5",r:".5"}],["circle",{cx:"8.5",cy:"7.5",r:".5"}],["circle",{cx:"6.5",cy:"12.5",r:".5"}],["path",{d:"M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"}]],
   "arrow-left":[["line",{x1:"19",y1:"12",x2:"5",y2:"12"}],["polyline",{points:"12 19 5 12 12 5"}]],
+  "lock":[["rect",{x:"3",y:"11",width:"18",height:"11",rx:"2"}],["path",{d:"M7 11V7a5 5 0 0 1 10 0v4"}]],
 };
 
 const I = ({ name, size = 18, className = "", style = {} }) => {
@@ -895,89 +910,317 @@ function AddAssignmentModal({ onClose, onSave }) {
   );
 }
 
-function Assignments({ items, setItems, search }) {
-  const { showToast } = useToast();
-  const [filter, setFilter] = useState("all");
-  const [selected, setSelected] = useState(null);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState(null);
+// NEW ASSIGNMENTS PAGE — Subject cards + collapsible lists
+// ============================================================
+const SUBJECTS_NEW = [
+  { id:"phy",  name:"Physics",                     color:"#7C9885", icon:"atom",         short:"PHY"  },
+  { id:"chem", name:"Chemistry",                   color:"#F4A259", icon:"flask-conical", short:"CHEM" },
+  { id:"java", name:"Java",                        color:"#5B8DEF", icon:"code-2",        short:"JAVA" },
+  { id:"math", name:"Fundamentals of Mathematics", color:"#FF6B5B", icon:"sigma",         short:"MATH" },
+];
 
-  const filtered = items.filter(a => filter === "all" || a.status === filter);
+const ASSIGNMENTS_DATA = {
+  phy: [
+    { id:"phy1", label:"Assignment 1", title:"Wave Optics – Diffraction Problems",      desc:"Solve 10 problems on single-slit and double-slit diffraction from Unit 2.",      due:"2026-06-14", priority:"Medium", tasks:["Read Unit 2 notes on diffraction","Solve single-slit problems 1–5","Solve double-slit problems 6–10","Show full working for each problem"] },
+    { id:"phy2", label:"Assignment 2", title:"Quantum Physics Numericals",              desc:"Calculate de Broglie wavelengths for 5 particles at given velocities.",          due:"2026-06-19", priority:"Medium", tasks:["Review de Broglie wavelength formula","Calculate wavelength for each of the 5 particles","Tabulate results with correct units","Add a short note on physical significance"] },
+    { id:"phy3", label:"Assignment 3", title:"Semiconductor Physics Report",            desc:"Write a 1-page report on p-n junction energy band diagrams.",                   due:"2026-06-23", priority:"High",   tasks:["Research p-n junction formation","Draw labelled energy band diagram","Explain depletion region in your own words","Keep report to 1 page, include references"] },
+  ],
+  chem: [
+    { id:"chem1", label:"Assignment 1", title:"Water Technology – Hardness Calculation", desc:"Calculate temporary and permanent hardness for 3 given water samples.",         due:"2026-06-13", priority:"Low",    tasks:["Note down given sample data","Calculate temporary hardness for each sample","Calculate permanent hardness for each sample","Express results in ppm / CaCO3 equivalents"] },
+    { id:"chem2", label:"Assignment 2", title:"Electrochemistry – Nernst Equation",      desc:"Apply the Nernst equation to 5 concentration cell problems from PYQ 2024.",      due:"2026-06-18", priority:"Medium", tasks:["Review Nernst equation derivation","Identify cell concentrations for each problem","Solve all 5 PYQ 2024 problems","Cross-check final EMF values"] },
+    { id:"chem3", label:"Assignment 3", title:"Polymer Classification Chart",            desc:"Create a comparison chart of 10 common polymers by structure and use.",          due:"2026-06-25", priority:"Low",    tasks:["List 10 common polymers","Classify each by structure (linear/branched/cross-linked)","Note typical use for each polymer","Present as a single comparison chart"] },
+  ],
+  java: [
+    { id:"java1", label:"Assignment 1", title:"OOP Concepts – Class & Object",           desc:"Implement a Bank Account class with deposit, withdraw, and balance methods.",   due:"2026-06-12", priority:"High",   tasks:["Define BankAccount class with fields","Implement deposit() method","Implement withdraw() with balance check","Implement getBalance() and test with sample data"] },
+    { id:"java2", label:"Assignment 2", title:"Inheritance & Polymorphism",              desc:"Build a Shape hierarchy with Circle, Rectangle, Triangle subclasses.",           due:"2026-06-17", priority:"Medium", tasks:["Design base Shape class","Implement Circle, Rectangle, Triangle subclasses","Override area() and perimeter() in each","Test polymorphic behaviour with a Shape[] array"] },
+    { id:"java3", label:"Assignment 3", title:"Exception Handling Practice",             desc:"Write 5 programs demonstrating checked and unchecked exception handling.",       due:"2026-06-21", priority:"Medium", tasks:["Write 2 programs using checked exceptions","Write 3 programs using unchecked exceptions","Use try/catch/finally appropriately","Add custom exception class in at least one program"] },
+  ],
+  math: [
+    { id:"math1", label:"Assignment 1", title:"Differential Equations – Problem Set 3",  desc:"Questions 1–10 from Unit 4: focus on first-order linear differential equations.", due:"2026-06-13", priority:"High",   tasks:["Read Unit 4 first-order ODE notes","Solve questions 1–5","Solve questions 6–10","Verify each solution by substitution"] },
+    { id:"math2", label:"Assignment 2", title:"Matrix Diagonalization",                  desc:"Diagonalize three 3×3 matrices and verify eigenvalues step-by-step.",            due:"2026-06-20", priority:"Medium", tasks:["Find eigenvalues for each matrix","Find corresponding eigenvectors","Form the diagonalizing matrix P","Verify P⁻¹AP gives the diagonal matrix"] },
+    { id:"math3", label:"Assignment 3", title:"Laplace Transform Exercises",             desc:"Solve inverse Laplace transforms for 8 functions using partial fractions.",      due:"2026-06-26", priority:"Low",    tasks:["Review partial fraction decomposition","Solve inverse transforms for functions 1–4","Solve inverse transforms for functions 5–8","Double-check against Laplace transform table"] },
+  ],
+};
 
-  const toggleComplete = (id) => {
-    setItems(items.map(a => a.id === id ? { ...a, status: a.status === "Completed" ? "Pending" : "Completed" } : a));
+function Assignments() {
+  const [openSubject, setOpenSubject] = useState(null);
+  const [checked,     setChecked]     = useState({});
+  const [detailItem,  setDetailItem]  = useState(null);   // assignment currently shown in modal
+  const [attachments, setAttachments] = useState({});      // { [assignmentId]: { name, size } }
+  const fileInputRef = useRef(null);
+
+  const toggleSubject = (id) => setOpenSubject(prev => prev === id ? null : id);
+  const toggleCheck   = (aId, e) => { e.stopPropagation(); setChecked(prev => ({ ...prev, [aId]: !prev[aId] })); };
+  const openDetails   = (a, e) => { if (e) e.stopPropagation(); setDetailItem(a); };
+
+  const handleFileChosen = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file || !detailItem) return;
+    const sizeKB = file.size / 1024;
+    const sizeLabel = sizeKB > 1024 ? `${(sizeKB/1024).toFixed(1)} MB` : `${Math.max(1,Math.round(sizeKB))} KB`;
+    setAttachments(prev => ({ ...prev, [detailItem.id]: { name: file.name, size: sizeLabel } }));
+    e.target.value = "";
   };
 
+  const removeAttachment = (aId) => setAttachments(prev => { const next = { ...prev }; delete next[aId]; return next; });
+
+  const doneFor   = (sid) => (ASSIGNMENTS_DATA[sid]||[]).filter(a => checked[a.id]).length;
+  const totalAll  = Object.values(ASSIGNMENTS_DATA).flat().length;
+  const doneAll   = Object.values(checked).filter(Boolean).length;
+
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-5 flex-wrap">
-        {["all","Pending","In Progress","Completed"].map(f => (
-          <button key={f} onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${filter===f ? "bg-[#1E1B4B] text-white" : "bg-white text-[#1E1B4B]/60 hover:bg-[#1E1B4B]/5"}`}>
-            {f === "all" ? "All" : f}
-          </button>
-        ))}
-        <button className="ml-auto px-4 py-2 rounded-xl text-sm font-medium bg-[#FF6B5B] text-white hover:bg-[#ff5a48] transition-colors flex items-center gap-1.5 shadow-sm">
-          <I name="plus" size={15} /> Add Assignment
-        </button>
+    <div className="space-y-4 max-w-3xl mx-auto">
+      {/* Hidden file input shared by all "Attach" buttons */}
+      <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.txt,image/*" className="hidden" onChange={handleFileChosen} />
+
+      {/* Overall counter */}
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm text-[#1E1B4B]/50">Click a subject to view & check off assignments</p>
+        <span className="text-xs font-medium px-3 py-1.5 rounded-full bg-[#1E1B4B]/5 text-[#1E1B4B]/60 flex items-center gap-1.5">
+          <I name="check-circle" size={13}/> {doneAll} / {totalAll} done
+        </span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {filtered.map((a, i) => {
-          const subj = subjectById(a.subject);
-          return (
-            <div key={a.id} onClick={() => setSelected(a)} className="glass rounded-2xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer float-in" style={{animationDelay: `${i*40}ms`}}>
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium px-2 py-1 rounded-lg" style={{ background: `${subj.color}1A`, color: subj.color }}>{subj.name}</span>
-                  <PriorityDot priority={a.priority} />
+      {SUBJECTS_NEW.map((subj, idx) => {
+        const isOpen = openSubject === subj.id;
+        const items  = ASSIGNMENTS_DATA[subj.id] || [];
+        const done   = doneFor(subj.id);
+        const pct    = Math.round((done / items.length) * 100);
+
+        return (
+          <div key={subj.id} className="rounded-2xl overflow-hidden float-in"
+            style={{ animationDelay:`${idx*70}ms`, boxShadow:"0 2px 12px rgba(30,27,75,0.07)", border:`1.5px solid ${subj.color}28` }}>
+
+            {/* ─── Subject header card ─── */}
+            <button onClick={() => toggleSubject(subj.id)} className="w-full text-left transition-all duration-200"
+              style={{ background: isOpen ? `${subj.color}10` : "var(--card)" }}>
+              <div className="flex items-center gap-4 px-5 py-4">
+
+                {/* Icon bubble */}
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background:`${subj.color}20`, color:subj.color, boxShadow:`0 2px 8px ${subj.color}30` }}>
+                  <I name={subj.icon} size={22}/>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); toggleComplete(a.id); }} className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${a.status==='Completed' ? "bg-[#7C9885] border-[#7C9885]" : "border-[#1E1B4B]/15 hover:border-[#7C9885]"}`}>
-                  {a.status === "Completed" && <I name="check" size={12} className="text-white" />}
-                </button>
-              </div>
-              <h3 className={`font-display font-medium text-[#1E1B4B] mb-1 ${a.status==='Completed' ? "line-through opacity-50" : ""}`}>{a.title}</h3>
-              <p className="text-sm text-[#1E1B4B]/50 mb-3 line-clamp-2">{a.desc}</p>
-              <div className="flex items-center justify-between">
-                <StatusBadge status={a.status} />
-                <span className="text-xs text-[#1E1B4B]/40 flex items-center gap-1"><I name="calendar" size={12} /> {fmtDate(a.due)}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
 
-      {selected && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl float-in" onClick={e=>e.stopPropagation()}>
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <span className="text-xs font-medium px-2 py-1 rounded-lg" style={{ background: `${subjectById(selected.subject).color}1A`, color: subjectById(selected.subject).color }}>{subjectById(selected.subject).name}</span>
-                <h2 className="font-display text-xl font-semibold text-[#1E1B4B] mt-2">{selected.title}</h2>
+                {/* Name + progress */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full tracking-widest"
+                      style={{ background:`${subj.color}20`, color:subj.color }}>
+                      {subj.short}
+                    </span>
+                    <h3 className="font-display font-semibold text-[#1E1B4B] text-[15px] leading-tight">{subj.name}</h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background:`${subj.color}18` }}>
+                      <div className="h-full rounded-full transition-all duration-700"
+                        style={{ width:`${pct}%`, background:subj.color }}/>
+                    </div>
+                    <span className="text-[11px] font-medium shrink-0" style={{ color:`${subj.color}CC` }}>
+                      {done}/{items.length} done
+                    </span>
+                  </div>
+                </div>
+
+                {/* Animated chevron */}
+                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all duration-300"
+                  style={{ background:`${subj.color}15`, color:subj.color, transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </div>
               </div>
-              <button onClick={() => setSelected(null)} className="text-[#1E1B4B]/30 hover:text-[#1E1B4B]"><I name="x" size={20} /></button>
-            </div>
-            <p className="text-sm text-[#1E1B4B]/60 mb-4">{selected.desc}</p>
-            <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
-              <div><p className="text-xs text-[#1E1B4B]/40 mb-1">Due Date</p><p className="font-medium text-[#1E1B4B]">{fmtDate(selected.due)}</p></div>
-              <div><p className="text-xs text-[#1E1B4B]/40 mb-1">Priority</p><p className="font-medium text-[#1E1B4B] flex items-center gap-1.5"><PriorityDot priority={selected.priority}/> {selected.priority}</p></div>
-            </div>
-            <div className="border-t border-[var(--line)] pt-4 mb-4">
-              <p className="text-xs font-medium text-[#1E1B4B]/40 mb-2 uppercase tracking-wide">Checklist</p>
-              {["Read assignment brief","Gather reference material","Draft solution","Review & submit"].map((c,i)=>(
-                <label key={i} className="flex items-center gap-2 text-sm text-[#1E1B4B]/70 mb-1.5 cursor-pointer">
-                  <input type="checkbox" className="rounded accent-[#7C9885]" defaultChecked={i<1} /> {c}
-                </label>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <button className="flex-1 py-2.5 rounded-xl bg-[#1E1B4B] text-white text-sm font-medium hover:bg-[#2a266a] transition-colors">Edit</button>
-              <button className="flex-1 py-2.5 rounded-xl bg-[#FF6B5B]/10 text-[#FF6B5B] text-sm font-medium hover:bg-[#FF6B5B]/20 transition-colors">Delete</button>
+            </button>
+
+            {/* ─── Assignment list (shown when open) ─── */}
+            {isOpen && (
+              <div className="float-in" style={{ borderTop:`1.5px solid ${subj.color}20`, background:"var(--surface-soft)" }}>
+                {items.map((a, i) => {
+                  const isDone  = !!checked[a.id];
+                  const days    = daysUntil(a.due);
+                  const overdue = days < 0 && !isDone;
+                  const urgent  = days <= 1 && !isDone;
+                  const att     = attachments[a.id];
+                  return (
+                    <div key={a.id}
+                      className="flex items-start gap-4 px-5 py-4 transition-colors hover:bg-white/60"
+                      style={{
+                        borderBottom: i < items.length - 1 ? `1px solid ${subj.color}14` : "none",
+                        background: isDone ? `${subj.color}07` : "transparent",
+                      }}>
+
+                      {/* Checkbox */}
+                      <button onClick={(e) => toggleCheck(a.id, e)} className="mt-0.5 shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-200"
+                        style={{ borderColor: isDone ? subj.color : "var(--line)", background: isDone ? subj.color : "var(--checkbox-bg)", boxShadow: isDone ? `0 0 0 3px ${subj.color}20` : "none" }}>
+                        {isDone && (
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        )}
+                      </button>
+
+                      {/* Text */}
+                      <div className="flex-1 min-w-0 cursor-pointer" onClick={(e) => toggleCheck(a.id, e)}>
+                        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                            style={{ background:`${subj.color}18`, color:subj.color }}>
+                            {a.label}
+                          </span>
+                          {!isDone && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1"
+                              style={{ background: overdue ? "#FF6B5B22" : urgent ? "#FF6B5B18" : `${subj.color}10`, color: overdue || urgent ? "#FF6B5B" : `${subj.color}99` }}>
+                              <I name="alarm-clock" size={10}/>
+                              {overdue ? "Overdue" : days === 0 ? "Due today" : days === 1 ? "Due tomorrow" : `${days}d left`}
+                            </span>
+                          )}
+                          {att && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 bg-[#7C9885]/15 text-[#7C9885]">
+                              <I name="paperclip" size={10}/> Attached
+                            </span>
+                          )}
+                        </div>
+                        <p className={`text-sm font-medium leading-snug text-[#1E1B4B] ${isDone ? "line-through opacity-35" : ""}`}>
+                          {a.title}
+                        </p>
+                        <p className={`text-xs text-[#1E1B4B]/45 mt-0.5 leading-relaxed ${isDone ? "opacity-35" : ""}`}>
+                          {a.desc}
+                        </p>
+                        <p className="text-[11px] text-[#1E1B4B]/40 mt-1 flex items-center gap-1.5">
+                          <I name="calendar" size={11}/> Due {fmtDate(a.due)}, 2026
+                        </p>
+                      </div>
+
+                      {/* Details button */}
+                      <button onClick={(e) => openDetails(a, e)}
+                        className="shrink-0 mt-0.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors"
+                        style={{ background:`${subj.color}15`, color:subj.color }}>
+                        <I name="eye" size={12}/> Details
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {/* Footer bar */}
+                <div className="px-5 py-2.5 flex items-center justify-between"
+                  style={{ background:`${subj.color}08`, borderTop:`1px solid ${subj.color}15` }}>
+                  <span className="text-xs text-[#1E1B4B]/40">
+                    {done === items.length
+                      ? "🎉 All assignments done!"
+                      : `${items.length - done} assignment${items.length - done !== 1 ? "s" : ""} remaining`}
+                  </span>
+                  <span className="text-xs font-semibold" style={{ color:subj.color }}>{pct}% complete</span>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* ─── Assignment Details Modal ─── */}
+      {detailItem && (() => {
+        const subjId  = Object.keys(ASSIGNMENTS_DATA).find(sid => ASSIGNMENTS_DATA[sid].some(a => a.id === detailItem.id));
+        const subj    = SUBJECTS_NEW.find(s => s.id === subjId) || SUBJECTS_NEW[0];
+        const days    = daysUntil(detailItem.due);
+        const overdue = days < 0;
+        const isDone  = !!checked[detailItem.id];
+        const att     = attachments[detailItem.id];
+        return (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setDetailItem(null)}>
+            <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl max-h-[88vh] overflow-y-auto float-in" onClick={e => e.stopPropagation()}>
+
+              {/* Header */}
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full tracking-widest" style={{ background:`${subj.color}20`, color:subj.color }}>{subj.short}</span>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background:`${subj.color}18`, color:subj.color }}>{detailItem.label}</span>
+                  </div>
+                  <h2 className="font-display text-lg font-semibold text-[#1E1B4B]">{detailItem.title}</h2>
+                </div>
+                <button onClick={() => setDetailItem(null)} className="text-[#1E1B4B]/30 hover:text-[#1E1B4B] shrink-0"><I name="x" size={20}/></button>
+              </div>
+
+              {/* Status / deadline / priority row */}
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="rounded-xl p-3" style={{ background:`${subj.color}0A` }}>
+                  <p className="text-[10px] text-[#1E1B4B]/40 mb-1 uppercase tracking-wide">Deadline</p>
+                  <p className={`text-sm font-semibold flex items-center gap-1 ${overdue && !isDone ? "text-[#FF6B5B]" : "text-[#1E1B4B]"}`}>
+                    <I name="calendar" size={13}/> {fmtDate(detailItem.due)}
+                  </p>
+                  <p className={`text-[11px] mt-0.5 ${overdue && !isDone ? "text-[#FF6B5B]" : "text-[#1E1B4B]/40"}`}>
+                    {isDone ? "Completed" : overdue ? "Overdue" : days === 0 ? "Due today" : days === 1 ? "Due tomorrow" : `${days} days left`}
+                  </p>
+                </div>
+                <div className="rounded-xl p-3" style={{ background:`${subj.color}0A` }}>
+                  <p className="text-[10px] text-[#1E1B4B]/40 mb-1 uppercase tracking-wide">Priority</p>
+                  <p className="text-sm font-semibold text-[#1E1B4B] flex items-center gap-1.5">
+                    <PriorityDot priority={detailItem.priority}/> {detailItem.priority}
+                  </p>
+                </div>
+                <div className="rounded-xl p-3" style={{ background:`${subj.color}0A` }}>
+                  <p className="text-[10px] text-[#1E1B4B]/40 mb-1 uppercase tracking-wide">Status</p>
+                  <p className="text-sm font-semibold" style={{ color: isDone ? "#7C9885" : subj.color }}>
+                    {isDone ? "Completed" : "Pending"}
+                  </p>
+                </div>
+              </div>
+
+              {/* What to do */}
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-[#1E1B4B]/40 uppercase tracking-wide mb-1.5">What to do</p>
+                <p className="text-sm text-[#1E1B4B]/70 leading-relaxed">{detailItem.desc}</p>
+              </div>
+
+              {/* Task checklist */}
+              {detailItem.tasks && (
+                <div className="mb-4 border-t border-[var(--line)] pt-4">
+                  <p className="text-xs font-semibold text-[#1E1B4B]/40 uppercase tracking-wide mb-2">Steps</p>
+                  <div className="space-y-1.5">
+                    {detailItem.tasks.map((t, ti) => (
+                      <label key={ti} className="flex items-start gap-2 text-sm text-[#1E1B4B]/70 cursor-pointer">
+                        <input type="checkbox" className="mt-0.5 rounded accent-[#7C9885]" />
+                        <span>{t}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Notes / PDF attachment */}
+              <div className="border-t border-[var(--line)] pt-4">
+                <p className="text-xs font-semibold text-[#1E1B4B]/40 uppercase tracking-wide mb-2">Notes / PDF</p>
+                {att ? (
+                  <div className="flex items-center gap-3 bg-[#1E1B4B]/5 rounded-xl p-3">
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background:`${subj.color}1A`, color:subj.color }}>
+                      <I name="file-text" size={16}/>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-[#1E1B4B] truncate">{att.name}</p>
+                      <p className="text-[10px] text-[#1E1B4B]/40">{att.size}</p>
+                    </div>
+                    <button onClick={() => removeAttachment(detailItem.id)} className="text-[#1E1B4B]/30 hover:text-[#FF6B5B] shrink-0"><I name="x" size={15}/></button>
+                  </div>
+                ) : (
+                  <button onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                    className="w-full py-3 rounded-xl border-2 border-dashed border-[var(--line)] text-sm text-[#1E1B4B]/50 flex items-center justify-center gap-2 hover:bg-[#1E1B4B]/5 transition-colors">
+                    <I name="paperclip" size={15}/> Attach notes or a PDF
+                  </button>
+                )}
+              </div>
+
+              {/* Footer actions */}
+              <div className="flex gap-2 mt-5">
+                <button onClick={(e) => { toggleCheck(detailItem.id, e); }}
+                  className="flex-1 py-2.5 rounded-xl text-white text-sm font-medium transition-colors"
+                  style={{ background: isDone ? "#7C9885" : subj.color }}>
+                  {isDone ? "Mark as Pending" : "Mark as Completed"}
+                </button>
+                <button onClick={() => setDetailItem(null)} className="flex-1 py-2.5 rounded-xl bg-[#1E1B4B]/5 text-[#1E1B4B] text-sm font-medium">Close</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
@@ -2175,12 +2418,161 @@ function AddMaterialModal({ onClose, onSave, activeSubject }) {
   );
 }
 
-function StudyMaterial({ items = [], setItems }) {
+const MAX_NOTE_FILE_SIZE = 5 * 1024 * 1024; // 5MB — local browser storage limit
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function formatFileSize(bytes) {
+  if (!bytes && bytes !== 0) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function UploadNoteModal({ onClose, onSave, activeSubject }) {
+  const [title, setTitle] = useState("");
+  const [desc, setDesc] = useState("");
+  const [file, setFile] = useState(null);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleFileChange = (e) => {
+    const f = e.target.files && e.target.files[0];
+    setError("");
+    if (f && f.size > MAX_NOTE_FILE_SIZE) {
+      setError("File is too large. Please choose a file under 5 MB.");
+      setFile(null);
+      e.target.value = "";
+      return;
+    }
+    setFile(f || null);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    setSaving(true);
+    try {
+      let dataUrl = "", fileName = "", fileType = "", fileSize = 0;
+      if (file) {
+        dataUrl = await fileToDataUrl(file);
+        fileName = file.name;
+        fileType = file.type;
+        fileSize = file.size;
+      }
+      onSave({
+        title: title.trim(),
+        desc: desc.trim(),
+        subject: activeSubject,
+        fileName,
+        fileType,
+        fileSize,
+        dataUrl,
+      });
+    } catch (err) {
+      setError("Couldn't read that file. Please try again.");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-[#1E1B4B] rounded-3xl max-w-md w-full p-6 shadow-2xl relative float-in overflow-hidden border border-[var(--line)]" onClick={e=>e.stopPropagation()}>
+        <div className="absolute top-0 left-0 right-0 h-2 bg-[#7C9885]"></div>
+
+        <div className="flex items-start justify-between mb-4 pt-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-[#7C9885]/10 text-[#7C9885]">
+              <I name="lock" size={20} />
+            </div>
+            <div>
+              <h2 className="font-display text-lg font-bold text-[#1E1B4B] dark:text-white">Upload Your Notes</h2>
+              <p className="text-xs text-[#1E1B4B]/40 dark:text-white/40 mt-0.5">Private — visible only to you</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-[#1E1B4B]/30 hover:text-[#1E1B4B] dark:text-white/30 dark:hover:text-white w-8 h-8 rounded-full hover:bg-[#1E1B4B]/5 flex items-center justify-center transition-colors">
+            <I name="x" size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4 text-left">
+          <div>
+            <label className="text-xs font-semibold text-[#1E1B4B]/50 dark:text-white/40 uppercase tracking-wider mb-1 block">Title *</label>
+            <input
+              type="text"
+              required
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="e.g. My Unit 3 Revision Notes"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-transparent text-sm text-[#1E1B4B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#7C9885]/30 placeholder:text-[#1E1B4B]/30"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-[#1E1B4B]/50 dark:text-white/40 uppercase tracking-wider mb-1 block">Description (Optional)</label>
+            <input
+              type="text"
+              value={desc}
+              onChange={e => setDesc(e.target.value)}
+              placeholder="e.g. Handwritten notes before CA-2"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-transparent text-sm text-[#1E1B4B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#7C9885]/30 placeholder:text-[#1E1B4B]/30"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-[#1E1B4B]/50 dark:text-white/40 uppercase tracking-wider mb-1 block">File (Optional, max 5 MB)</label>
+            <label className="w-full px-3.5 py-4 rounded-xl border-2 border-dashed border-[var(--line)] bg-transparent text-sm text-[#1E1B4B]/60 dark:text-white/60 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#7C9885]/5 transition-colors">
+              <I name="upload" size={18} className="text-[#7C9885]" />
+              <span className="text-xs">{file ? file.name : "Click to choose a file (PDF, image, doc...)"}</span>
+              {file && <span className="text-[10px] text-[#1E1B4B]/30 dark:text-white/30">{formatFileSize(file.size)}</span>}
+              <input type="file" className="hidden" onChange={handleFileChange} />
+            </label>
+            {error && <p className="text-xs text-red-500 mt-1.5">{error}</p>}
+          </div>
+
+          <p className="text-[11px] text-[#1E1B4B]/35 dark:text-white/35 flex items-center gap-1.5">
+            <I name="lock" size={12} /> Only you can see and access notes you upload here.
+          </p>
+
+          <div className="flex gap-3 pt-3 border-t border-[var(--line)] mt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl bg-[#1E1B4B]/5 hover:bg-[#1E1B4B]/10 dark:bg-white/5 dark:hover:bg-white/10 text-[#1E1B4B] dark:text-white text-sm font-semibold transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold shadow-lg transition-all active:scale-[0.98] bg-[#7C9885] hover:bg-[#688370] disabled:opacity-60"
+            >
+              {saving ? "Uploading..." : "Upload Notes"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function StudyMaterial({ items = [], setItems, user }) {
   const { showToast } = useToast();
   const [activeSubject, setActiveSubject] = useState(SUBJECTS[0].id);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showNoteModal, setShowNoteModal] = useState(false);
 
   const subj = subjectById(activeSubject);
+
+  // Personal notes are scoped to the signed-in user so nobody else can see them.
+  const ownerKey = (user && (user.email || user.name)) || "guest";
 
   const customMaterials = items ? items.filter(m => m.subject === activeSubject) : [];
 
@@ -2191,6 +2583,7 @@ function StudyMaterial({ items = [], setItems }) {
   const customBooksAndNotes = customMaterials.filter(m => m.type === "Book" || m.type === "Notes");
   const customLinks = customMaterials.filter(m => m.type === "Link");
   const customVideos = customMaterials.filter(m => m.type === "Video");
+  const myNotes = customMaterials.filter(m => m.type === "PersonalNote" && m.owner === ownerKey);
 
   const displayedBooks = [...seedBooksAndNotes, ...customBooksAndNotes];
   
@@ -2233,8 +2626,18 @@ function StudyMaterial({ items = [], setItems }) {
         ))}
       </div>
 
+      <div className="glass rounded-2xl p-4 mb-6 flex items-center gap-3 border border-[var(--line)]" style={{borderLeft:`4px solid ${subj?.color || '#5B8DEF'}`}}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{background:`${subj?.color || '#5B8DEF'}1A`, color: subj?.color || '#5B8DEF'}}>
+          <I name={subj?.icon || "book-open"} size={20} />
+        </div>
+        <div>
+          <p className="font-display font-semibold text-[#1E1B4B] dark:text-white">{subj?.name}</p>
+          <p className="text-xs text-[#1E1B4B]/40 dark:text-white/40">Faculty-suggested books, video playlists, and your private notes for this subject</p>
+        </div>
+      </div>
+
       <h3 className="font-display font-semibold text-[#1E1B4B] dark:text-white mb-3 flex items-center gap-2">
-        <I name="book-open" size={18} className="text-[#5B8DEF]"/> Books & Notes
+        <I name="book-open" size={18} className="text-[#5B8DEF]"/> Available Books
       </h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
         {displayedBooks.map((b, i) => (
@@ -2260,13 +2663,13 @@ function StudyMaterial({ items = [], setItems }) {
         <div onClick={() => setShowAddModal(true)} className="glass rounded-2xl border-2 border-dashed border-[var(--line)] flex items-center justify-center min-h-[140px] cursor-pointer hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
           <div className="text-center">
             <I name="plus" size={24} className="text-[#1E1B4B]/30 dark:text-white/30 mx-auto mb-1"/>
-            <p className="text-xs text-[#1E1B4B]/40 dark:text-white/40">Add material</p>
+            <p className="text-xs text-[#1E1B4B]/40 dark:text-white/40">Add book / resource</p>
           </div>
         </div>
       </div>
 
       <h3 className="font-display font-semibold text-[#1E1B4B] dark:text-white mb-3 flex items-center gap-2">
-        <I name="play" size={18} className="text-[#FF6B5B]"/> Video Resources
+        <I name="play" size={18} className="text-[#FF6B5B]"/> YouTube Playlist Recommendations
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
         {displayedVideos.map((vid, idx) => (
@@ -2277,6 +2680,45 @@ function StudyMaterial({ items = [], setItems }) {
             onDelete={vid.id ? () => handleRemoveMaterial(vid.id) : null}
           />
         ))}
+      </div>
+
+      <h3 className="font-display font-semibold text-[#1E1B4B] dark:text-white mb-1 flex items-center gap-2">
+        <I name="lock" size={18} className="text-[#7C9885]"/> My Notes
+      </h3>
+      <p className="text-xs text-[#1E1B4B]/40 dark:text-white/40 mb-3 flex items-center gap-1.5">
+        Private to you — no one else can see what you upload here.
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
+        {myNotes.map((n, i) => (
+          <div key={n.id} className="glass rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all float-in relative group" style={{animationDelay:`${i*60}ms`}}>
+            <button
+              onClick={() => handleRemoveMaterial(n.id)}
+              className="absolute top-2 right-2 p-1 rounded-lg bg-black/60 hover:bg-red-500 text-white/80 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              title="Remove note"
+            >
+              <I name="x" size={12} />
+            </button>
+            <div
+              onClick={() => n.dataUrl && window.open(n.dataUrl, "_blank")}
+              className={`h-24 flex items-center justify-center ${n.dataUrl ? "cursor-pointer" : ""}`}
+              style={{background:"#7C988514"}}
+            >
+              <I name={n.dataUrl ? "file-text" : "sticky-note"} size={32} style={{ color: "#7C9885" }} />
+            </div>
+            <div className="p-3 text-left">
+              <p className="text-sm font-medium text-[#1E1B4B] dark:text-white truncate">{n.title}</p>
+              <p className="text-xs text-[#1E1B4B]/40 dark:text-white/40 truncate">
+                {n.fileName ? `${n.fileName}${n.fileSize ? " · " + formatFileSize(n.fileSize) : ""}` : (n.desc || "Personal note")}
+              </p>
+            </div>
+          </div>
+        ))}
+        <div onClick={() => setShowNoteModal(true)} className="glass rounded-2xl border-2 border-dashed border-[var(--line)] flex items-center justify-center min-h-[140px] cursor-pointer hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
+          <div className="text-center">
+            <I name="upload" size={24} className="text-[#7C9885]/60 mx-auto mb-1"/>
+            <p className="text-xs text-[#1E1B4B]/40 dark:text-white/40">Upload your notes</p>
+          </div>
+        </div>
       </div>
 
       <h3 className="font-display font-semibold text-[#1E1B4B] dark:text-white mb-3 flex items-center gap-2">
@@ -2320,6 +2762,23 @@ function StudyMaterial({ items = [], setItems }) {
             setItems([newMat, ...items]);
             setShowAddModal(false);
             showToast("Study resource added successfully!", "success");
+          }}
+        />
+      )}
+
+      {showNoteModal && (
+        <UploadNoteModal
+          activeSubject={activeSubject}
+          onClose={() => setShowNoteModal(false)}
+          onSave={(note) => {
+            setItems([{
+              id: Date.now(),
+              type: "PersonalNote",
+              owner: ownerKey,
+              ...note,
+            }, ...items]);
+            setShowNoteModal(false);
+            showToast("Your notes were uploaded — only you can see them.", "success");
           }}
         />
       )}
@@ -3828,7 +4287,7 @@ function App() {
         {page === "assignments" && <Assignments items={assignments} setItems={setAssignments} search={search} />}
         {page === "cas" && <CAModule cas={cas} setCas={setCas} />}
         {page === "pyqs" && <PYQModule />}
-        {page === "material" && <StudyMaterial items={materials} setItems={setMaterials} />}
+        {page === "material" && <StudyMaterial items={materials} setItems={setMaterials} user={user} />}
         {page === "calendar" && <CalendarModule cas={cas} assignments={assignments} events={events} setEvents={setEvents} />}
         {page === "community" && <HelpEachOther messages={messages} setMessages={setMessages} />}
         {page === "notifications" && <NotificationsModule items={notifications} setItems={setNotifications} />}
