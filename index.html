@@ -637,87 +637,317 @@ function Dashboard({ setPage }) {
   );
 }
 
-// ---------- ASSIGNMENTS ----------
+/ NEW ASSIGNMENTS PAGE — Subject cards + collapsible lists
+// ============================================================
+const SUBJECTS_NEW = [
+  { id:"phy",  name:"Physics",                     color:"#7C9885", icon:"atom",         short:"PHY"  },
+  { id:"chem", name:"Chemistry",                   color:"#F4A259", icon:"flask-conical", short:"CHEM" },
+  { id:"java", name:"Java",                        color:"#5B8DEF", icon:"code-2",        short:"JAVA" },
+  { id:"math", name:"Fundamentals of Mathematics", color:"#FF6B5B", icon:"sigma",         short:"MATH" },
+];
+
+const ASSIGNMENTS_DATA = {
+  phy: [
+    { id:"phy1", label:"Assignment 1", title:"Wave Optics – Diffraction Problems",      desc:"Solve 10 problems on single-slit and double-slit diffraction from Unit 2.",      due:"2026-06-14", priority:"Medium", tasks:["Read Unit 2 notes on diffraction","Solve single-slit problems 1–5","Solve double-slit problems 6–10","Show full working for each problem"] },
+    { id:"phy2", label:"Assignment 2", title:"Quantum Physics Numericals",              desc:"Calculate de Broglie wavelengths for 5 particles at given velocities.",          due:"2026-06-19", priority:"Medium", tasks:["Review de Broglie wavelength formula","Calculate wavelength for each of the 5 particles","Tabulate results with correct units","Add a short note on physical significance"] },
+    { id:"phy3", label:"Assignment 3", title:"Semiconductor Physics Report",            desc:"Write a 1-page report on p-n junction energy band diagrams.",                   due:"2026-06-23", priority:"High",   tasks:["Research p-n junction formation","Draw labelled energy band diagram","Explain depletion region in your own words","Keep report to 1 page, include references"] },
+  ],
+  chem: [
+    { id:"chem1", label:"Assignment 1", title:"Water Technology – Hardness Calculation", desc:"Calculate temporary and permanent hardness for 3 given water samples.",         due:"2026-06-13", priority:"Low",    tasks:["Note down given sample data","Calculate temporary hardness for each sample","Calculate permanent hardness for each sample","Express results in ppm / CaCO3 equivalents"] },
+    { id:"chem2", label:"Assignment 2", title:"Electrochemistry – Nernst Equation",      desc:"Apply the Nernst equation to 5 concentration cell problems from PYQ 2024.",      due:"2026-06-18", priority:"Medium", tasks:["Review Nernst equation derivation","Identify cell concentrations for each problem","Solve all 5 PYQ 2024 problems","Cross-check final EMF values"] },
+    { id:"chem3", label:"Assignment 3", title:"Polymer Classification Chart",            desc:"Create a comparison chart of 10 common polymers by structure and use.",          due:"2026-06-25", priority:"Low",    tasks:["List 10 common polymers","Classify each by structure (linear/branched/cross-linked)","Note typical use for each polymer","Present as a single comparison chart"] },
+  ],
+  java: [
+    { id:"java1", label:"Assignment 1", title:"OOP Concepts – Class & Object",           desc:"Implement a Bank Account class with deposit, withdraw, and balance methods.",   due:"2026-06-12", priority:"High",   tasks:["Define BankAccount class with fields","Implement deposit() method","Implement withdraw() with balance check","Implement getBalance() and test with sample data"] },
+    { id:"java2", label:"Assignment 2", title:"Inheritance & Polymorphism",              desc:"Build a Shape hierarchy with Circle, Rectangle, Triangle subclasses.",           due:"2026-06-17", priority:"Medium", tasks:["Design base Shape class","Implement Circle, Rectangle, Triangle subclasses","Override area() and perimeter() in each","Test polymorphic behaviour with a Shape[] array"] },
+    { id:"java3", label:"Assignment 3", title:"Exception Handling Practice",             desc:"Write 5 programs demonstrating checked and unchecked exception handling.",       due:"2026-06-21", priority:"Medium", tasks:["Write 2 programs using checked exceptions","Write 3 programs using unchecked exceptions","Use try/catch/finally appropriately","Add custom exception class in at least one program"] },
+  ],
+  math: [
+    { id:"math1", label:"Assignment 1", title:"Differential Equations – Problem Set 3",  desc:"Questions 1–10 from Unit 4: focus on first-order linear differential equations.", due:"2026-06-13", priority:"High",   tasks:["Read Unit 4 first-order ODE notes","Solve questions 1–5","Solve questions 6–10","Verify each solution by substitution"] },
+    { id:"math2", label:"Assignment 2", title:"Matrix Diagonalization",                  desc:"Diagonalize three 3×3 matrices and verify eigenvalues step-by-step.",            due:"2026-06-20", priority:"Medium", tasks:["Find eigenvalues for each matrix","Find corresponding eigenvectors","Form the diagonalizing matrix P","Verify P⁻¹AP gives the diagonal matrix"] },
+    { id:"math3", label:"Assignment 3", title:"Laplace Transform Exercises",             desc:"Solve inverse Laplace transforms for 8 functions using partial fractions.",      due:"2026-06-26", priority:"Low",    tasks:["Review partial fraction decomposition","Solve inverse transforms for functions 1–4","Solve inverse transforms for functions 5–8","Double-check against Laplace transform table"] },
+  ],
+};
+
 function Assignments() {
-  const [filter, setFilter] = useState("all");
-  const [selected, setSelected] = useState(null);
-  const [items, setItems] = useState(ASSIGNMENTS);
+  const [openSubject, setOpenSubject] = useState(null);
+  const [checked,     setChecked]     = useState({});
+  const [detailItem,  setDetailItem]  = useState(null);   // assignment currently shown in modal
+  const [attachments, setAttachments] = useState({});      // { [assignmentId]: { name, size } }
+  const fileInputRef = useRef(null);
 
-  const filtered = items.filter(a => filter === "all" || a.status === filter);
+  const toggleSubject = (id) => setOpenSubject(prev => prev === id ? null : id);
+  const toggleCheck   = (aId, e) => { e.stopPropagation(); setChecked(prev => ({ ...prev, [aId]: !prev[aId] })); };
+  const openDetails   = (a, e) => { if (e) e.stopPropagation(); setDetailItem(a); };
 
-  const toggleComplete = (id) => {
-    setItems(items.map(a => a.id === id ? { ...a, status: a.status === "Completed" ? "Pending" : "Completed" } : a));
+  const handleFileChosen = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file || !detailItem) return;
+    const sizeKB = file.size / 1024;
+    const sizeLabel = sizeKB > 1024 ? `${(sizeKB/1024).toFixed(1)} MB` : `${Math.max(1,Math.round(sizeKB))} KB`;
+    setAttachments(prev => ({ ...prev, [detailItem.id]: { name: file.name, size: sizeLabel } }));
+    e.target.value = "";
   };
 
+  const removeAttachment = (aId) => setAttachments(prev => { const next = { ...prev }; delete next[aId]; return next; });
+
+  const doneFor   = (sid) => (ASSIGNMENTS_DATA[sid]||[]).filter(a => checked[a.id]).length;
+  const totalAll  = Object.values(ASSIGNMENTS_DATA).flat().length;
+  const doneAll   = Object.values(checked).filter(Boolean).length;
+
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-5 flex-wrap">
-        {["all","Pending","In Progress","Completed"].map(f => (
-          <button key={f} onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${filter===f ? "bg-[#1E1B4B] text-white" : "bg-white text-[#1E1B4B]/60 hover:bg-[#1E1B4B]/5"}`}>
-            {f === "all" ? "All" : f}
-          </button>
-        ))}
-        <button className="ml-auto px-4 py-2 rounded-xl text-sm font-medium bg-[#FF6B5B] text-white hover:bg-[#ff5a48] transition-colors flex items-center gap-1.5 shadow-sm">
-          <I name="plus" size={15} /> Add Assignment
-        </button>
+    <div className="space-y-4 max-w-3xl mx-auto">
+      {/* Hidden file input shared by all "Attach" buttons */}
+      <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.txt,image/*" className="hidden" onChange={handleFileChosen} />
+
+      {/* Overall counter */}
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm text-[#1E1B4B]/50">Click a subject to view & check off assignments</p>
+        <span className="text-xs font-medium px-3 py-1.5 rounded-full bg-[#1E1B4B]/5 text-[#1E1B4B]/60 flex items-center gap-1.5">
+          <I name="check-circle" size={13}/> {doneAll} / {totalAll} done
+        </span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {filtered.map((a, i) => {
-          const subj = subjectById(a.subject);
-          return (
-            <div key={a.id} onClick={() => setSelected(a)} className="glass rounded-2xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer float-in" style={{animationDelay: `${i*40}ms`}}>
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium px-2 py-1 rounded-lg" style={{ background: `${subj.color}1A`, color: subj.color }}>{subj.name}</span>
-                  <PriorityDot priority={a.priority} />
+      {SUBJECTS_NEW.map((subj, idx) => {
+        const isOpen = openSubject === subj.id;
+        const items  = ASSIGNMENTS_DATA[subj.id] || [];
+        const done   = doneFor(subj.id);
+        const pct    = Math.round((done / items.length) * 100);
+
+        return (
+          <div key={subj.id} className="rounded-2xl overflow-hidden float-in"
+            style={{ animationDelay:`${idx*70}ms`, boxShadow:"0 2px 12px rgba(30,27,75,0.07)", border:`1.5px solid ${subj.color}28` }}>
+
+            {/* ─── Subject header card ─── */}
+            <button onClick={() => toggleSubject(subj.id)} className="w-full text-left transition-all duration-200"
+              style={{ background: isOpen ? `${subj.color}10` : "rgba(255,255,255,0.75)" }}>
+              <div className="flex items-center gap-4 px-5 py-4">
+
+                {/* Icon bubble */}
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background:`${subj.color}20`, color:subj.color, boxShadow:`0 2px 8px ${subj.color}30` }}>
+                  <I name={subj.icon} size={22}/>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); toggleComplete(a.id); }} className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${a.status==='Completed' ? "bg-[#7C9885] border-[#7C9885]" : "border-[#1E1B4B]/15 hover:border-[#7C9885]"}`}>
-                  {a.status === "Completed" && <I name="check" size={12} className="text-white" />}
-                </button>
-              </div>
-              <h3 className={`font-display font-medium text-[#1E1B4B] mb-1 ${a.status==='Completed' ? "line-through opacity-50" : ""}`}>{a.title}</h3>
-              <p className="text-sm text-[#1E1B4B]/50 mb-3 line-clamp-2">{a.desc}</p>
-              <div className="flex items-center justify-between">
-                <StatusBadge status={a.status} />
-                <span className="text-xs text-[#1E1B4B]/40 flex items-center gap-1"><I name="calendar" size={12} /> {fmtDate(a.due)}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
 
-      {selected && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl float-in" onClick={e=>e.stopPropagation()}>
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <span className="text-xs font-medium px-2 py-1 rounded-lg" style={{ background: `${subjectById(selected.subject).color}1A`, color: subjectById(selected.subject).color }}>{subjectById(selected.subject).name}</span>
-                <h2 className="font-display text-xl font-semibold text-[#1E1B4B] mt-2">{selected.title}</h2>
+                {/* Name + progress */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full tracking-widest"
+                      style={{ background:`${subj.color}20`, color:subj.color }}>
+                      {subj.short}
+                    </span>
+                    <h3 className="font-display font-semibold text-[#1E1B4B] text-[15px] leading-tight">{subj.name}</h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background:`${subj.color}18` }}>
+                      <div className="h-full rounded-full transition-all duration-700"
+                        style={{ width:`${pct}%`, background:subj.color }}/>
+                    </div>
+                    <span className="text-[11px] font-medium shrink-0" style={{ color:`${subj.color}CC` }}>
+                      {done}/{items.length} done
+                    </span>
+                  </div>
+                </div>
+
+                {/* Animated chevron */}
+                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all duration-300"
+                  style={{ background:`${subj.color}15`, color:subj.color, transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </div>
               </div>
-              <button onClick={() => setSelected(null)} className="text-[#1E1B4B]/30 hover:text-[#1E1B4B]"><I name="x" size={20} /></button>
-            </div>
-            <p className="text-sm text-[#1E1B4B]/60 mb-4">{selected.desc}</p>
-            <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
-              <div><p className="text-xs text-[#1E1B4B]/40 mb-1">Due Date</p><p className="font-medium text-[#1E1B4B]">{fmtDate(selected.due)}</p></div>
-              <div><p className="text-xs text-[#1E1B4B]/40 mb-1">Priority</p><p className="font-medium text-[#1E1B4B] flex items-center gap-1.5"><PriorityDot priority={selected.priority}/> {selected.priority}</p></div>
-            </div>
-            <div className="border-t border-[var(--line)] pt-4 mb-4">
-              <p className="text-xs font-medium text-[#1E1B4B]/40 mb-2 uppercase tracking-wide">Checklist</p>
-              {["Read assignment brief","Gather reference material","Draft solution","Review & submit"].map((c,i)=>(
-                <label key={i} className="flex items-center gap-2 text-sm text-[#1E1B4B]/70 mb-1.5 cursor-pointer">
-                  <input type="checkbox" className="rounded accent-[#7C9885]" defaultChecked={i<1} /> {c}
-                </label>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <button className="flex-1 py-2.5 rounded-xl bg-[#1E1B4B] text-white text-sm font-medium hover:bg-[#2a266a] transition-colors">Edit</button>
-              <button className="flex-1 py-2.5 rounded-xl bg-[#FF6B5B]/10 text-[#FF6B5B] text-sm font-medium hover:bg-[#FF6B5B]/20 transition-colors">Delete</button>
+            </button>
+
+            {/* ─── Assignment list (shown when open) ─── */}
+            {isOpen && (
+              <div className="float-in" style={{ borderTop:`1.5px solid ${subj.color}20`, background:"rgba(255,255,255,0.6)" }}>
+                {items.map((a, i) => {
+                  const isDone  = !!checked[a.id];
+                  const days    = daysUntil(a.due);
+                  const overdue = days < 0 && !isDone;
+                  const urgent  = days <= 1 && !isDone;
+                  const att     = attachments[a.id];
+                  return (
+                    <div key={a.id}
+                      className="flex items-start gap-4 px-5 py-4 transition-colors hover:bg-white/70"
+                      style={{
+                        borderBottom: i < items.length - 1 ? `1px solid ${subj.color}14` : "none",
+                        background: isDone ? `${subj.color}07` : "transparent",
+                      }}>
+
+                      {/* Checkbox */}
+                      <button onClick={(e) => toggleCheck(a.id, e)} className="mt-0.5 shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-200"
+                        style={{ borderColor: isDone ? subj.color : "#1E1B4B25", background: isDone ? subj.color : "white", boxShadow: isDone ? `0 0 0 3px ${subj.color}20` : "none" }}>
+                        {isDone && (
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        )}
+                      </button>
+
+                      {/* Text */}
+                      <div className="flex-1 min-w-0 cursor-pointer" onClick={(e) => toggleCheck(a.id, e)}>
+                        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                            style={{ background:`${subj.color}18`, color:subj.color }}>
+                            {a.label}
+                          </span>
+                          {!isDone && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1"
+                              style={{ background: overdue ? "#FF6B5B22" : urgent ? "#FF6B5B18" : `${subj.color}10`, color: overdue || urgent ? "#FF6B5B" : `${subj.color}99` }}>
+                              <I name="alarm-clock" size={10}/>
+                              {overdue ? "Overdue" : days === 0 ? "Due today" : days === 1 ? "Due tomorrow" : `${days}d left`}
+                            </span>
+                          )}
+                          {att && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 bg-[#7C9885]/15 text-[#7C9885]">
+                              <I name="paperclip" size={10}/> Attached
+                            </span>
+                          )}
+                        </div>
+                        <p className={`text-sm font-medium leading-snug text-[#1E1B4B] ${isDone ? "line-through opacity-35" : ""}`}>
+                          {a.title}
+                        </p>
+                        <p className={`text-xs text-[#1E1B4B]/45 mt-0.5 leading-relaxed ${isDone ? "opacity-35" : ""}`}>
+                          {a.desc}
+                        </p>
+                        <p className="text-[11px] text-[#1E1B4B]/40 mt-1 flex items-center gap-1.5">
+                          <I name="calendar" size={11}/> Due {fmtDate(a.due)}, 2026
+                        </p>
+                      </div>
+
+                      {/* Details button */}
+                      <button onClick={(e) => openDetails(a, e)}
+                        className="shrink-0 mt-0.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors"
+                        style={{ background:`${subj.color}15`, color:subj.color }}>
+                        <I name="eye" size={12}/> Details
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {/* Footer bar */}
+                <div className="px-5 py-2.5 flex items-center justify-between"
+                  style={{ background:`${subj.color}08`, borderTop:`1px solid ${subj.color}15` }}>
+                  <span className="text-xs text-[#1E1B4B]/40">
+                    {done === items.length
+                      ? "🎉 All assignments done!"
+                      : `${items.length - done} assignment${items.length - done !== 1 ? "s" : ""} remaining`}
+                  </span>
+                  <span className="text-xs font-semibold" style={{ color:subj.color }}>{pct}% complete</span>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* ─── Assignment Details Modal ─── */}
+      {detailItem && (() => {
+        const subjId  = Object.keys(ASSIGNMENTS_DATA).find(sid => ASSIGNMENTS_DATA[sid].some(a => a.id === detailItem.id));
+        const subj    = SUBJECTS_NEW.find(s => s.id === subjId) || SUBJECTS_NEW[0];
+        const days    = daysUntil(detailItem.due);
+        const overdue = days < 0;
+        const isDone  = !!checked[detailItem.id];
+        const att     = attachments[detailItem.id];
+        return (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setDetailItem(null)}>
+            <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl max-h-[88vh] overflow-y-auto float-in" onClick={e => e.stopPropagation()}>
+
+              {/* Header */}
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full tracking-widest" style={{ background:`${subj.color}20`, color:subj.color }}>{subj.short}</span>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background:`${subj.color}18`, color:subj.color }}>{detailItem.label}</span>
+                  </div>
+                  <h2 className="font-display text-lg font-semibold text-[#1E1B4B]">{detailItem.title}</h2>
+                </div>
+                <button onClick={() => setDetailItem(null)} className="text-[#1E1B4B]/30 hover:text-[#1E1B4B] shrink-0"><I name="x" size={20}/></button>
+              </div>
+
+              {/* Status / deadline / priority row */}
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="rounded-xl p-3" style={{ background:`${subj.color}0A` }}>
+                  <p className="text-[10px] text-[#1E1B4B]/40 mb-1 uppercase tracking-wide">Deadline</p>
+                  <p className={`text-sm font-semibold flex items-center gap-1 ${overdue && !isDone ? "text-[#FF6B5B]" : "text-[#1E1B4B]"}`}>
+                    <I name="calendar" size={13}/> {fmtDate(detailItem.due)}
+                  </p>
+                  <p className={`text-[11px] mt-0.5 ${overdue && !isDone ? "text-[#FF6B5B]" : "text-[#1E1B4B]/40"}`}>
+                    {isDone ? "Completed" : overdue ? "Overdue" : days === 0 ? "Due today" : days === 1 ? "Due tomorrow" : `${days} days left`}
+                  </p>
+                </div>
+                <div className="rounded-xl p-3" style={{ background:`${subj.color}0A` }}>
+                  <p className="text-[10px] text-[#1E1B4B]/40 mb-1 uppercase tracking-wide">Priority</p>
+                  <p className="text-sm font-semibold text-[#1E1B4B] flex items-center gap-1.5">
+                    <PriorityDot priority={detailItem.priority}/> {detailItem.priority}
+                  </p>
+                </div>
+                <div className="rounded-xl p-3" style={{ background:`${subj.color}0A` }}>
+                  <p className="text-[10px] text-[#1E1B4B]/40 mb-1 uppercase tracking-wide">Status</p>
+                  <p className="text-sm font-semibold" style={{ color: isDone ? "#7C9885" : subj.color }}>
+                    {isDone ? "Completed" : "Pending"}
+                  </p>
+                </div>
+              </div>
+
+              {/* What to do */}
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-[#1E1B4B]/40 uppercase tracking-wide mb-1.5">What to do</p>
+                <p className="text-sm text-[#1E1B4B]/70 leading-relaxed">{detailItem.desc}</p>
+              </div>
+
+              {/* Task checklist */}
+              {detailItem.tasks && (
+                <div className="mb-4 border-t border-[var(--line)] pt-4">
+                  <p className="text-xs font-semibold text-[#1E1B4B]/40 uppercase tracking-wide mb-2">Steps</p>
+                  <div className="space-y-1.5">
+                    {detailItem.tasks.map((t, ti) => (
+                      <label key={ti} className="flex items-start gap-2 text-sm text-[#1E1B4B]/70 cursor-pointer">
+                        <input type="checkbox" className="mt-0.5 rounded accent-[#7C9885]" />
+                        <span>{t}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Notes / PDF attachment */}
+              <div className="border-t border-[var(--line)] pt-4">
+                <p className="text-xs font-semibold text-[#1E1B4B]/40 uppercase tracking-wide mb-2">Notes / PDF</p>
+                {att ? (
+                  <div className="flex items-center gap-3 bg-[#1E1B4B]/5 rounded-xl p-3">
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background:`${subj.color}1A`, color:subj.color }}>
+                      <I name="file-text" size={16}/>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-[#1E1B4B] truncate">{att.name}</p>
+                      <p className="text-[10px] text-[#1E1B4B]/40">{att.size}</p>
+                    </div>
+                    <button onClick={() => removeAttachment(detailItem.id)} className="text-[#1E1B4B]/30 hover:text-[#FF6B5B] shrink-0"><I name="x" size={15}/></button>
+                  </div>
+                ) : (
+                  <button onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                    className="w-full py-3 rounded-xl border-2 border-dashed border-[var(--line)] text-sm text-[#1E1B4B]/50 flex items-center justify-center gap-2 hover:bg-[#1E1B4B]/5 transition-colors">
+                    <I name="paperclip" size={15}/> Attach notes or a PDF
+                  </button>
+                )}
+              </div>
+
+              {/* Footer actions */}
+              <div className="flex gap-2 mt-5">
+                <button onClick={(e) => { toggleCheck(detailItem.id, e); }}
+                  className="flex-1 py-2.5 rounded-xl text-white text-sm font-medium transition-colors"
+                  style={{ background: isDone ? "#7C9885" : subj.color }}>
+                  {isDone ? "Mark as Pending" : "Mark as Completed"}
+                </button>
+                <button onClick={() => setDetailItem(null)} className="flex-1 py-2.5 rounded-xl bg-[#1E1B4B]/5 text-[#1E1B4B] text-sm font-medium">Close</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
